@@ -14,6 +14,7 @@
         <DataTable ref="dataTableRef" :columns="columns" :data="tableRows" :loading="loading" :total="displayTotal"
           v-model:page="page" v-model:global-filter="search" :page-size="limit"
           :selected-row-index="selectedRowIndex"
+          :row-clickable="!groupBy" @row-click="openDocument"
           searchable :search-placeholder="t('erp.stockMovement.searchPh', 'Search by ref no…')">
 
           <template #toolbar>
@@ -122,7 +123,7 @@
 
 <script setup>
 import { h, ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { createColumnHelper } from '@tanstack/vue-table'
 import {
@@ -143,6 +144,7 @@ const selectedRowIndex = ref(-1)
 
 const shortcuts = [
   { key: '↑ / ↓', label: 'Move row selection' },
+  { key: '↵',     label: 'Open source document' },
   { key: 'Esc',    label: 'Deselect row' },
 ]
 
@@ -155,6 +157,8 @@ function onKeydown(e) {
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
     selectedRowIndex.value = Math.max(selectedRowIndex.value - 1, 0)
+  } else if (e.key === 'Enter' && !groupBy.value && selectedRowIndex.value >= 0) {
+    openDocument(tableRows.value[selectedRowIndex.value])
   } else if (e.key === 'Escape') {
     selectedRowIndex.value = -1
   }
@@ -171,6 +175,7 @@ const typeLabel   = (type) => t(`erp.movementTypes.${type}`, type?.replace('_', 
 const typeOptions = computed(() => MOVEMENT_TYPES.map(id => ({ id, name: typeLabel(id) })))
 
 const route          = useRoute()
+const router         = useRouter()
 const rows           = ref([])
 const groupBy        = ref('')
 const groupRows      = ref([])
@@ -249,6 +254,26 @@ const TYPE_BADGE = {
   count:           'bg-blue-50 text-blue-700',
 }
 const typeBadge = (type) => TYPE_BADGE[type] || 'bg-[#F1F5F9] text-[#637381]'
+
+// Detail-view route per source document type — clicking a row (or pressing
+// Enter on it) opens the document the movement came from.
+const REF_ROUTE = {
+  GoodReceive:   '/erp/good-receive',
+  StockAdjust:   '/erp/stock-adjust',
+  StockRequest:  '/erp/stock-request',
+  StockIssue:    '/erp/stock-issue',
+  StockReturn:   '/erp/stock-return',
+  StockCount:    '/erp/stock-count',
+  DeliveryOrder: '/erp/delivery-orders',
+  SalesOrder:    '/erp/orders',
+}
+const refPath = (m) => (m?.refId && REF_ROUTE[m.refType]) ? `${REF_ROUTE[m.refType]}/${m.refId}` : null
+
+function openDocument(movement) {
+  const path = refPath(movement)
+  if (path) router.push(path)
+}
+
 const ch = createColumnHelper()
 
 const movementColumns = [
@@ -258,7 +283,12 @@ const movementColumns = [
   }),
   ch.accessor('refNo', {
     header: () => t('erp.stockMovement.colRef'),
-    cell: info => h('span', { class: 'font-mono text-xs font-semibold text-[#1C2434] whitespace-nowrap' }, info.getValue() || '—'),
+    cell: info => {
+      const linked = !!refPath(info.row.original)
+      return h('span', {
+        class: `font-mono text-xs font-semibold whitespace-nowrap ${linked ? 'text-primary-600 group-hover:underline' : 'text-[#1C2434]'}`,
+      }, info.getValue() || '—')
+    },
   }),
   ch.accessor('type', {
     header: () => t('erp.stockMovement.colType'),
