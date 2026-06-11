@@ -252,13 +252,13 @@ const typeBadge = (type) => TYPE_BADGE[type] || 'bg-[#F1F5F9] text-[#637381]'
 const ch = createColumnHelper()
 
 const movementColumns = [
-  ch.accessor('refNo', {
-    header: () => t('erp.stockMovement.colRef'),
-    cell: info => h('span', { class: 'font-mono text-xs font-semibold text-[#1C2434] whitespace-nowrap' }, info.getValue() || '—'),
-  }),
   ch.accessor('createdAt', {
     header: () => t('erp.stockMovement.colDate'),
     cell: info => h('span', { class: 'text-[#637381] text-xs whitespace-nowrap' }, fmtDateTime(info.getValue())),
+  }),
+  ch.accessor('refNo', {
+    header: () => t('erp.stockMovement.colRef'),
+    cell: info => h('span', { class: 'font-mono text-xs font-semibold text-[#1C2434] whitespace-nowrap' }, info.getValue() || '—'),
   }),
   ch.accessor('type', {
     header: () => t('erp.stockMovement.colType'),
