@@ -60,6 +60,7 @@
                 class="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-[#DEE4EE]
                        hover:bg-white/[0.08] hover:text-white transition-colors whitespace-nowrap"
                 :class="{ 'bg-white/[0.15] text-white': openDropdown === item.label || isGroupActive(item) }"
+                @click="toggleDropdown(item, $event)"
               >
                 <component :is="item.icon" class="w-4 h-4 flex-shrink-0" />
                 <span>{{ t(item.label) }}</span>
@@ -373,70 +374,107 @@
       </Transition>
 
       <!-- Mega-menu: at least one child has its own sub-group -->
-      <div
-        v-if="openDropdown && activeItem && isMegaMenu"
-        :style="megaMenuStyle"
-        class="hidden md:block bg-white shadow-xl border border-gray-200 p-3 scrollbar-thin"
-        @mouseenter="cancelClose"
-        @mouseleave="scheduleClose"
+      <Transition
+        enter-active-class="transition ease-out duration-100"
+        enter-from-class="opacity-0 -translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-75"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-1"
       >
-        <div class="grid gap-x-3 gap-y-3"
-             :style="{ gridTemplateColumns: `repeat(auto-fit, minmax(${MEGA_COL_MIN}px, 1fr))` }">
-          <div v-for="(col, ci) in megaColumns" :key="col.label || ci" class="min-w-0">
-
-            <!-- Column header — uses the sub-group label, or "Quick links" for the flat column -->
-            <div class="flex items-center gap-1.5 pb-1.5 mb-1.5 border-b border-gray-100">
-              <component v-if="col.icon" :is="col.icon" class="w-3 h-3 text-gray-400 flex-shrink-0" />
-              <p class="text-[9.5px] font-semibold tracking-widest text-gray-500 uppercase">
-                {{ t(col.label) }}
-              </p>
-            </div>
-
-            <ul class="space-y-px">
-              <li v-for="link in col.items" :key="link.to">
+        <div
+          v-if="openDropdown && activeItem && isMegaMenu"
+          :style="megaMenuStyle"
+          class="hidden md:flex items-stretch bg-white shadow-xl border border-[#E2E8F0] scrollbar-thin"
+          @mouseenter="cancelClose"
+          @mouseleave="scheduleClose"
+        >
+          <!-- Quick links rail — the group's flat top-level pages -->
+          <div v-if="quickLinks.length" class="w-[220px] flex-shrink-0 bg-[#F7F9FC] border-r border-[#E2E8F0] p-3">
+            <p class="px-2.5 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-[#9BA7B0] uppercase">
+              {{ t('nav.quickLinks') }}
+            </p>
+            <ul class="space-y-0.5">
+              <li v-for="link in quickLinks" :key="link.to">
                 <RouterLink
                   :to="link.to"
-                  class="flex items-center gap-1.5 px-1.5 py-1 text-[12.5px] text-gray-600
-                         hover:bg-primary-50 hover:text-primary-700 transition-colors leading-tight"
-                  active-class="text-primary-700 font-medium bg-primary-50"
+                  class="flex items-center gap-2.5 px-2.5 py-2 text-[13px] font-medium text-[#1C2434]
+                         hover:bg-white hover:text-primary-600 hover:shadow-sm transition-all"
+                  active-class="bg-white text-primary-600 shadow-sm"
                   @click="openDropdown = null"
                 >
-                  <component v-if="link.icon" :is="link.icon" class="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{{ t(link.label) }}</span>
+                  <component v-if="link.icon" :is="link.icon" class="w-4 h-4 text-[#637381] flex-shrink-0" />
+                  <span class="truncate">{{ t(link.label) }}</span>
                 </RouterLink>
               </li>
             </ul>
+          </div>
 
+          <!-- Sub-group columns -->
+          <div class="flex-1 min-w-0 p-5 grid gap-x-8 gap-y-6 content-start"
+               :style="{ gridTemplateColumns: `repeat(auto-fit, minmax(${MEGA_COL_MIN}px, 1fr))` }">
+            <div v-for="col in groupColumns" :key="col.label" class="min-w-0">
+
+              <p class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold tracking-wider text-[#9BA7B0] uppercase">
+                <component v-if="col.icon" :is="col.icon" class="w-3.5 h-3.5 flex-shrink-0" />
+                {{ t(col.label) }}
+              </p>
+
+              <ul class="space-y-0.5">
+                <li v-for="link in col.items" :key="link.to">
+                  <RouterLink
+                    :to="link.to"
+                    class="flex items-center gap-2.5 -mx-2 px-2 py-1.5 text-[13px] text-[#374151]
+                           hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                    active-class="bg-primary-50 text-primary-700 font-medium"
+                    @click="openDropdown = null"
+                  >
+                    <component v-if="link.icon" :is="link.icon" class="w-4 h-4 text-[#9BA7B0] flex-shrink-0" />
+                    <span class="truncate">{{ t(link.label) }}</span>
+                  </RouterLink>
+                </li>
+              </ul>
+
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
 
       <!-- Simple dropdown: flat children only -->
-      <div
-        v-else-if="openDropdown && activeItem"
-        :style="{
-          position: 'fixed',
-          top: dropdownPos.top + 'px',
-          left: dropdownPos.left + 'px',
-          zIndex: 9999,
-        }"
-        class="hidden md:block w-56 bg-white shadow-xl border border-gray-200 py-1"
-        @mouseenter="cancelClose"
-        @mouseleave="scheduleClose"
+      <Transition
+        enter-active-class="transition ease-out duration-100"
+        enter-from-class="opacity-0 -translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-75"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-1"
       >
-        <template v-for="child in activeItem.children" :key="child.label || child.to">
-          <RouterLink
-            :to="child.to"
-            class="flex items-center gap-2 px-3 py-2 text-sm text-gray-600
-                   hover:bg-primary-50 hover:text-primary-700 transition-colors"
-            active-class="text-primary-700 font-medium bg-primary-50"
-            @click="openDropdown = null"
-          >
-            <component :is="child.icon" class="w-4 h-4 flex-shrink-0" />
-            <span>{{ t(child.label) }}</span>
-          </RouterLink>
-        </template>
-      </div>
+        <div
+          v-if="openDropdown && activeItem && !isMegaMenu"
+          :style="{
+            position: 'fixed',
+            top: dropdownPos.top + 'px',
+            left: dropdownPos.left + 'px',
+            zIndex: 9999,
+          }"
+          class="hidden md:block w-60 bg-white shadow-xl border border-[#E2E8F0] p-1.5"
+          @mouseenter="cancelClose"
+          @mouseleave="scheduleClose"
+        >
+          <template v-for="child in activeItem.children" :key="child.label || child.to">
+            <RouterLink
+              :to="child.to"
+              class="flex items-center gap-2.5 px-3 py-2 text-[13px] text-[#374151]
+                     hover:bg-primary-50 hover:text-primary-700 transition-colors"
+              active-class="bg-primary-50 text-primary-700 font-medium"
+              @click="openDropdown = null"
+            >
+              <component v-if="child.icon" :is="child.icon" class="w-4 h-4 text-[#9BA7B0] flex-shrink-0" />
+              <span class="truncate">{{ t(child.label) }}</span>
+            </RouterLink>
+          </template>
+        </div>
+      </Transition>
     </Teleport>
 
   </div>
@@ -524,6 +562,7 @@ function onClickOutside(e) {
 
 function onKeydown(e) {
   if (e.key === 'Escape' && mobileNavOpen.value) mobileNavOpen.value = false
+  if (e.key === 'Escape' && openDropdown.value) openDropdown.value = null
   if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
     const el = e.target
     const typing = el && (
@@ -565,33 +604,29 @@ const isMegaMenu = computed(() => {
   return !!activeItem.value?.children?.some((c) => Array.isArray(c.children) && c.children.length)
 })
 
-// Columns for the mega-menu: one for each sub-group, plus a "quick links" column for flat children
-const megaColumns = computed(() => {
-  if (!activeItem.value) return []
-  const flatChildren = activeItem.value.children.filter((c) => !c.children && c.to)
-  const groupedChildren = activeItem.value.children.filter((c) => c.children?.length)
-
-  const cols = []
-  if (flatChildren.length) {
-    cols.push({ label: 'nav.quickLinks', icon: null, items: flatChildren })
-  }
-  for (const g of groupedChildren) {
-    cols.push({ label: g.label, icon: g.icon, items: g.children })
-  }
-  return cols
-})
+// Mega-menu content: flat children become the quick-links rail, sub-groups
+// become the link columns.
+const quickLinks = computed(() =>
+  activeItem.value?.children.filter((c) => !c.children && c.to) ?? [])
+const groupColumns = computed(() =>
+  (activeItem.value?.children ?? [])
+    .filter((c) => c.children?.length)
+    .map((g) => ({ label: g.label, icon: g.icon, items: g.children })))
 
 // Positioning — keep mega menu within the viewport. Columns wrap to a new row
 // when the available width can't fit them all (CSS auto-fit grid handles that).
-const MEGA_COL_MIN = 220   // min column width — wide enough for long report labels
-const MEGA_PADDING = 12    // matches p-3 above
+const MEGA_COL_MIN = 200   // min column width — wide enough for long report labels
+const MEGA_COL_GAP = 32    // matches gap-x-8
+const MEGA_PADDING = 20    // matches p-5
+const MEGA_RAIL_W  = 220   // quick-links rail
 const MEGA_MAX     = 1200  // hard cap, even on huge monitors
 const VIEWPORT_PAD = 12    // breathing room from window edges
 
 const megaMenuStyle = computed(() => {
-  const cols     = megaColumns.value.length || 1
+  const cols     = groupColumns.value.length || 1
+  const railW    = quickLinks.value.length ? MEGA_RAIL_W : 0
   const vw       = typeof window !== 'undefined' ? window.innerWidth : 1280
-  const idealW   = cols * (MEGA_COL_MIN + 8) + MEGA_PADDING * 2
+  const idealW   = railW + cols * MEGA_COL_MIN + (cols - 1) * MEGA_COL_GAP + MEGA_PADDING * 2
   const maxW     = Math.min(MEGA_MAX, vw - VIEWPORT_PAD * 2)
   const width    = Math.min(idealW, maxW)
   const maxLeft  = Math.max(VIEWPORT_PAD, vw - width - VIEWPORT_PAD)
@@ -613,8 +648,18 @@ function openDropdownAt(item, event) {
   openDropdown.value = item.label
 }
 
+// Click toggles too — hover-only menus confuse users who click the trigger
+// expecting something to happen.
+function toggleDropdown(item, event) {
+  if (openDropdown.value === item.label) {
+    openDropdown.value = null
+  } else {
+    openDropdownAt(item, event)
+  }
+}
+
 function scheduleClose() {
-  closeTimer = setTimeout(() => { openDropdown.value = null }, 120)
+  closeTimer = setTimeout(() => { openDropdown.value = null }, 200)
 }
 
 function cancelClose() {
