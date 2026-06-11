@@ -4,7 +4,7 @@ const { auditFields } = require('../../model-fields')
 
 const Quotation = sequelize.define('Quotation', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true , comment: 'ID (รหัส)'},
-  refNo: { type: DataTypes.STRING, allowNull: false, unique: true , comment: 'Reference No. (เลขอ้างอิง)'},
+  refNo: { type: DataTypes.STRING, allowNull: false , comment: 'Reference No. (เลขอ้างอิง)'},
   customerId: { type: DataTypes.UUID, allowNull: true , comment: 'Customer (ลูกค้า)'},
   quotationDate: { type: DataTypes.DATEONLY, allowNull: false, defaultValue: DataTypes.NOW },
   validUntil: { type: DataTypes.DATEONLY, allowNull: true },
@@ -37,6 +37,12 @@ const Quotation = sequelize.define('Quotation', {
   convertedToOrderId: { type: DataTypes.UUID, allowNull: true },
 
   ...auditFields,
-}, { tableName: 'quotations' })
+}, {
+  tableName: 'quotations',
+  indexes: [
+    // Per-organization uniqueness on the document number (NULL organizationId distinct).
+    { unique: true, name: 'idx_quotations_refno_org', fields: ['refNo', 'organizationId'] },
+  ],
+})
 
 module.exports = Quotation

@@ -12,7 +12,6 @@ const Order = sequelize.define('Order', {
   orderNumber: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
     comment: 'Order Number (เลขที่ใบสั่งขาย)',
   },
   customerId: {
@@ -63,6 +62,11 @@ const Order = sequelize.define('Order', {
   discountValue: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 , comment: 'Discount Value (มูลค่าส่วนลด)'},
   discountAmount:{ type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 , comment: 'Discount Amount (จำนวนส่วนลด)'},
   ...auditFields,
+}, {
+  indexes: [
+    // Per-organization uniqueness on the document number (NULL organizationId distinct).
+    { unique: true, name: 'idx_orders_number_org', fields: ['orderNumber', 'organizationId'] },
+  ],
 })
 
 module.exports = Order

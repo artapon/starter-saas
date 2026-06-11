@@ -4,7 +4,7 @@ const { auditFields } = require('../../model-fields')
 
 const VendorBill = sequelize.define('VendorBill', {
   id:               { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true , comment: 'ID (รหัส)'},
-  billNumber:       { type: DataTypes.STRING, allowNull: false, unique: true , comment: 'Bill Number (เลขที่บิล)'},
+  billNumber:       { type: DataTypes.STRING, allowNull: false , comment: 'Bill Number (เลขที่บิล)'},
   vendorId:         { type: DataTypes.UUID, allowNull: true , comment: 'Vendor (ผู้ขาย)'},
   purchaseOrderId:  { type: DataTypes.UUID, allowNull: true , comment: 'Purchase Order (ใบสั่งซื้อ)'},
   goodReceiveId:    { type: DataTypes.UUID, allowNull: true , comment: 'Good Receive (ใบรับสินค้า)'},
@@ -30,6 +30,10 @@ const VendorBill = sequelize.define('VendorBill', {
   ...auditFields,
 }, {
   tableName: 'vendor_bills',
+  indexes: [
+    // Per-organization uniqueness on the document number (NULL organizationId distinct).
+    { unique: true, name: 'idx_vendor_bills_number_org', fields: ['billNumber', 'organizationId'] },
+  ],
 })
 
 module.exports = VendorBill

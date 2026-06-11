@@ -4,7 +4,7 @@ const { auditFields } = require('../../model-fields')
 
 const Invoice = sequelize.define('Invoice', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true , comment: 'ID (รหัส)'},
-  invoiceNumber: { type: DataTypes.STRING, allowNull: false, unique: true , comment: 'Invoice Number (เลขที่ใบแจ้งหนี้)'},
+  invoiceNumber: { type: DataTypes.STRING, allowNull: false , comment: 'Invoice Number (เลขที่ใบแจ้งหนี้)'},
   customerId:      { type: DataTypes.UUID, allowNull: true , comment: 'Customer (ลูกค้า)'},
   orderId:         { type: DataTypes.UUID, allowNull: true , comment: 'Sales Order (ใบสั่งขาย)'},
   deliveryOrderId: { type: DataTypes.UUID, allowNull: true , comment: 'Delivery Order (ใบส่งสินค้า)'},
@@ -61,6 +61,12 @@ const Invoice = sequelize.define('Invoice', {
     },
     comment: 'Net Total (ยอดสุทธิหลังหัก ณ ที่จ่าย)',
   },
+}, {
+  indexes: [
+    // Per-organization uniqueness on the document number (NULL organizationId
+    // rows stay distinct) so two tenants can each have INV-2026-0001.
+    { unique: true, name: 'idx_invoices_number_org', fields: ['invoiceNumber', 'organizationId'] },
+  ],
 })
 
 module.exports = Invoice
