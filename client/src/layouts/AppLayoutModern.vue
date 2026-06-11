@@ -648,14 +648,11 @@ function openDropdownAt(item, event) {
   openDropdown.value = item.label
 }
 
-// Click toggles too — hover-only menus confuse users who click the trigger
-// expecting something to happen.
+// Click opens too — hover-only menus confuse users who click the trigger
+// expecting something to happen. Idempotent (no toggle-close): hover usually
+// opened the menu already, so a toggling click would instantly dismiss it.
 function toggleDropdown(item, event) {
-  if (openDropdown.value === item.label) {
-    openDropdown.value = null
-  } else {
-    openDropdownAt(item, event)
-  }
+  openDropdownAt(item, event)
 }
 
 function scheduleClose() {
