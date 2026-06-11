@@ -4,7 +4,7 @@ const { auditFields } = require('../../../model-fields')
 
 const GoodReceive = sequelize.define('GoodReceive', {
   id:       { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true , comment: 'ID (รหัส)'},
-  refNo:    { type: DataTypes.STRING, allowNull: false, unique: true , comment: 'Reference No. (เลขอ้างอิง)'},
+  refNo:    { type: DataTypes.STRING, allowNull: false , comment: 'Reference No. (เลขอ้างอิง)'},
   date:     { type: DataTypes.DATEONLY, allowNull: false , comment: 'Date (วันที่)'},
   supplier: { type: DataTypes.STRING, allowNull: true },
   notes:    { type: DataTypes.TEXT, allowNull: true , comment: 'Notes (หมายเหตุ)'},
@@ -19,6 +19,11 @@ const GoodReceive = sequelize.define('GoodReceive', {
   invoiceDiscount:  { type: DataTypes.DECIMAL(10, 2), allowNull: true, defaultValue: 0 },
   invoiceNetAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: true, defaultValue: 0 },
   ...auditFields,
+}, {
+  indexes: [
+    // Per-organization uniqueness on the document number (NULL organizationId distinct).
+    { unique: true, name: 'idx_good_receives_refno_org', fields: ['refNo', 'organizationId'] },
+  ],
 })
 
 module.exports = GoodReceive

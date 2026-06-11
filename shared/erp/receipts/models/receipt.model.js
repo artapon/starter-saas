@@ -12,7 +12,6 @@ const Receipt = sequelize.define('Receipt', {
   receiptNumber: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
     comment: 'Receipt Number (เลขที่ใบเสร็จ)',
   },
   customerId: {
@@ -58,6 +57,11 @@ const Receipt = sequelize.define('Receipt', {
   currency:       { type: DataTypes.STRING(3), allowNull: true , comment: 'Currency (สกุลเงิน)'},
   exchangeRate:   { type: DataTypes.DECIMAL(20, 8), allowNull: false, defaultValue: 1 , comment: 'Exchange Rate (อัตราแลกเปลี่ยน)'},
   ...auditFields,
+}, {
+  indexes: [
+    // Per-organization uniqueness on the document number (NULL organizationId distinct).
+    { unique: true, name: 'idx_receipts_number_org', fields: ['receiptNumber', 'organizationId'] },
+  ],
 })
 
 module.exports = Receipt
