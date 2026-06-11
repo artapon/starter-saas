@@ -3,12 +3,14 @@
  *
  *   requireFeature('ai-agent')                 → 403 if the plan lacks the feature
  *   enforceLimit('erp.invoices.monthly')       → 403 once the quota is reached
- *   meter('erp.invoices.monthly')              → counts a successful request
+ *   meter('storageMb', { amount: n })          → counts a successful request
  *
- * `enforceLimit` + `meter` are the copy-me pattern: put `enforceLimit` before the
- * handler (so an over-quota request never runs) and `meter` after it (so only a
- * successful 2xx/3xx response is counted). See shared/erp/invoices/invoice.routes.js
- * for a live example.
+ * Put `enforceLimit` before the handler so an over-quota request never runs
+ * (see shared/erp/invoices/invoice.routes.js). Metrics listed in the billing
+ * service's LIVE_COUNTERS (seats, erp.invoices.monthly, …) are counted straight
+ * from the database and need no metering; add `meter` after the handler only
+ * for metrics that have no live counter — it increments the UsageCounter on a
+ * successful 2xx/3xx response.
  *
  * The org key is the caller's owning organization: a staff user carries
  * `organizationId`; a top-level org user *is* the org, so its own `id` is used.

@@ -9,13 +9,15 @@ jest.mock('../../../models', () => ({
   SubscriptionInvoice: { create: jest.fn(), findAll: jest.fn() },
   PlanChangeRequest:   { findByPk: jest.fn(), findOne: jest.fn(), create: jest.fn(), findAll: jest.fn() },
   User:                { count: jest.fn() },
+  Invoice:             { count: jest.fn() },
 }))
 
-const { Plan, Subscription, UsageCounter, PlanChangeRequest, User } = require('../../../models')
+const { Op } = require('sequelize')
+const { Plan, Subscription, UsageCounter, PlanChangeRequest, User, Invoice } = require('../../../models')
 const service = require('../billing.service')
 
 const future = new Date(Date.now() + 30 * 86400000)
-const PRO  = { id: 'pro',  slug: 'pro',  limits: { seats: 5, 'erp.invoices.monthly': 100 }, features: { 'ai-agent': true } }
+const PRO  = { id: 'pro',  slug: 'pro',  limits: { seats: 5, 'erp.invoices.monthly': 100, storageMb: 1024 }, features: { 'ai-agent': true } }
 const FREE = { id: 'free', slug: 'free', limits: { seats: 2, 'erp.invoices.monthly': 20 }, features: { 'ai-agent': false } }
 
 beforeEach(() => service._invalidate())
@@ -45,15 +47,34 @@ describe('checkLimit', () => {
   })
 
   test('allows when usage + amount is within the limit', async () => {
-    UsageCounter.findOne.mockResolvedValue({ count: 99 })
+    Invoice.count.mockResolvedValue(99)
     await expect(service.checkLimit('o', 'erp.invoices.monthly', 1))
       .resolves.toMatchObject({ allowed: true, limit: 100, used: 99 })
   })
 
   test('blocks when usage + amount would exceed the limit', async () => {
-    UsageCounter.findOne.mockResolvedValue({ count: 100 })
+    Invoice.count.mockResolvedValue(100)
     await expect(service.checkLimit('o', 'erp.invoices.monthly', 1))
       .resolves.toMatchObject({ allowed: false, used: 100 })
+  })
+
+  test('invoices are live-counted: org-scoped, soft-deletes excluded, current month only', async () => {
+    Invoice.count.mockResolvedValue(3)
+    await service.checkLimit('o', 'erp.invoices.monthly', 1)
+    const { where } = Invoice.count.mock.calls.at(-1)[0]
+    expect(where.organizationId).toBe('o')
+    expect(where.dataFlag[Op.ne]).toBe(2)
+    const since = where.createdAt[Op.gte]
+    const now = new Date()
+    expect(since.toISOString()).toBe(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString())
+  })
+
+  test('metrics without a live counter fall back to the usage counter', async () => {
+    UsageCounter.findOne.mockResolvedValue({ count: 512 })
+    await expect(service.checkLimit('o', 'storageMb', 1))
+      .resolves.toMatchObject({ allowed: true, limit: 1024, used: 512 })
+    expect(UsageCounter.findOne).toHaveBeenCalledWith(
+      { where: { organizationId: 'o', metric: 'storageMb', period: 'lifetime' } })
   })
 
   test('treats a -1 limit as unlimited', async () => {

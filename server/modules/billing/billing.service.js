@@ -7,7 +7,7 @@
  * organization's plan — resolve the owning org id with `orgKeyOf` upstream.
  */
 const { Op } = require('sequelize')
-const { Plan, Subscription, UsageCounter, SubscriptionInvoice, PlanChangeRequest, User } = require('../../models')
+const { Plan, Subscription, UsageCounter, SubscriptionInvoice, PlanChangeRequest, User, Invoice } = require('../../models')
 const config = require('../../config/config')
 const log = require('../../core/logger').forLabel('billing')
 
@@ -105,24 +105,35 @@ async function isUserLocked(user) {
 // A limit is unlimited when the key is absent, null, or negative.
 const isUnlimited = (limit) => limit === undefined || limit === null || Number(limit) < 0
 
+// First instant of the current calendar month (UTC — same clock as monthKey).
+const monthStart = (d = new Date()) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
+
+// Live-counted metrics: the database is authoritative because rows appear and
+// disappear outside the meter middleware (demo seed, AI agent, document
+// conversions, deletes). Monthly metrics count rows created this calendar
+// month; `dataFlag != 2` mirrors the ERP soft-delete filter the list views use.
+// Metrics not listed here fall back to the UsageCounter row.
+const LIVE_COUNTERS = {
+  seats: (orgId) => User.count({ where: { organizationId: orgId } }),
+  'erp.invoices.monthly': (orgId) => Invoice.count({
+    where: { organizationId: orgId, dataFlag: { [Op.ne]: 2 }, createdAt: { [Op.gte]: monthStart() } },
+  }),
+}
+
 async function usedFor(orgId, metric, period = periodForMetric(metric)) {
+  const live = LIVE_COUNTERS[metric]
+  if (live) return live(orgId)
   const row = await UsageCounter.findOne({ where: { organizationId: orgId, metric, period } })
   return row ? row.count : 0
 }
 
-/**
- * Evaluate a quota. For seats the live count of staff users is authoritative
- * (it can change outside the meter); all other metrics use the usage counter.
- */
+// Evaluate a quota against the current usage (live count where available).
 async function checkLimit(orgId, metric, amount = 1) {
   const plan = await getEffectivePlan(orgId)
   const limit = plan?.limits?.[metric]
   if (isUnlimited(limit)) return { allowed: true, unlimited: true, limit: null, used: null, remaining: null }
 
-  const used = metric === 'seats'
-    ? await User.count({ where: { organizationId: orgId } })
-    : await usedFor(orgId, metric)
-
+  const used = await usedFor(orgId, metric)
   const remaining = Number(limit) - used
   return { allowed: used + amount <= Number(limit), unlimited: false, limit: Number(limit), used, remaining }
 }
@@ -164,13 +175,10 @@ async function getUsage(orgId) {
   const limits = plan?.limits || {}
   const out = []
   for (const metric of Object.keys(limits)) {
-    const { limit, used, unlimited } = await checkLimit(orgId, metric, 0)
     out.push({
       metric,
-      limit: unlimited ? null : limit,
-      used: metric === 'seats'
-        ? await User.count({ where: { organizationId: orgId } })
-        : await usedFor(orgId, metric),
+      limit: isUnlimited(limits[metric]) ? null : Number(limits[metric]),
+      used: await usedFor(orgId, metric),
     })
   }
   return out
@@ -184,9 +192,7 @@ async function exceededLimits(orgId, plan) {
   for (const metric of Object.keys(limits)) {
     if (isUnlimited(limits[metric])) continue
     const limit = Number(limits[metric])
-    const used = metric === 'seats'
-      ? await User.count({ where: { organizationId: orgId } })
-      : await usedFor(orgId, metric)
+    const used = await usedFor(orgId, metric)
     if (used > limit) offenders.push({ metric, limit, used })
   }
   return offenders
