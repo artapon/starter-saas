@@ -5,18 +5,28 @@
       <div class="flex items-center justify-between gap-4">
         <div>
           <h1 class="text-xl font-semibold text-[#1C2434]">{{ t('erp.stockMovement.title') }}</h1>
-          <p class="text-sm text-[#637381] mt-0.5">{{ total }} movement{{ total !== 1 ? 's' : '' }}</p>
+          <p class="text-sm text-[#637381] mt-0.5">{{ subtitle }}</p>
         </div>
         <KeyboardShortcuts :shortcuts="shortcuts" />
       </div>
 
       <div class="bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
-        <DataTable ref="dataTableRef" :columns="columns" :data="rows" :loading="loading" :total="total"
+        <DataTable ref="dataTableRef" :columns="columns" :data="tableRows" :loading="loading" :total="displayTotal"
           v-model:page="page" v-model:global-filter="search" :page-size="limit"
           :selected-row-index="selectedRowIndex"
           searchable :search-placeholder="t('erp.stockMovement.searchPh', 'Search by ref no…')">
 
           <template #toolbar>
+            <div class="flex items-center border border-[#E2E8F0] bg-white">
+              <span class="pl-3 pr-1.5 text-xs font-medium text-[#9BA7B0] whitespace-nowrap hidden sm:inline">
+                {{ t('erp.stockMovement.groupBy') }}
+              </span>
+              <button v-for="opt in groupOptions" :key="opt.id" @click="groupBy = opt.id"
+                :class="['px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap',
+                  groupBy === opt.id ? 'bg-primary-50 text-primary-600' : 'text-[#637381] hover:bg-slate-50']">
+                {{ opt.name }}
+              </button>
+            </div>
             <button @click="showFilters = !showFilters"
               :class="['flex items-center gap-1.5 px-3 py-2 text-sm font-medium border transition-colors whitespace-nowrap',
                 (activeFilterCount > 0 || showFilters)
@@ -141,7 +151,7 @@ function onKeydown(e) {
   if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    selectedRowIndex.value = Math.min(selectedRowIndex.value + 1, rows.value.length - 1)
+    selectedRowIndex.value = Math.min(selectedRowIndex.value + 1, tableRows.value.length - 1)
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
     selectedRowIndex.value = Math.max(selectedRowIndex.value - 1, 0)
@@ -162,6 +172,8 @@ const typeOptions = computed(() => MOVEMENT_TYPES.map(id => ({ id, name: typeLab
 
 const route          = useRoute()
 const rows           = ref([])
+const groupBy        = ref('')
+const groupRows      = ref([])
 const products       = ref([])
 const stores         = ref([])
 const total          = ref(0)
@@ -175,6 +187,22 @@ const filterDateFrom = ref('')
 const filterDateTo   = ref('')
 const showFilters    = ref(!!route.query.productId)
 const loading        = ref(false)
+
+const groupOptions = computed(() => [
+  { id: '',        name: t('erp.stockMovement.groupNone') },
+  { id: 'type',    name: t('erp.stockMovement.colType') },
+  { id: 'product', name: t('erp.stockMovement.colProduct') },
+  { id: 'store',   name: t('erp.stockMovement.colStore') },
+])
+
+// Grouped mode aggregates server-side and paginates the groups client-side.
+const tableRows    = computed(() => groupBy.value
+  ? groupRows.value.slice((page.value - 1) * limit, page.value * limit)
+  : rows.value)
+const displayTotal = computed(() => groupBy.value ? groupRows.value.length : total.value)
+const subtitle     = computed(() => groupBy.value
+  ? `${groupRows.value.length} ${t('erp.stockMovement.groups')}`
+  : `${total.value} movement${total.value !== 1 ? 's' : ''}`)
 
 const activeFilterCount = computed(() =>
   [filterProduct.value, filterStore.value, filterType.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length)
@@ -223,7 +251,7 @@ const TYPE_BADGE = {
 const typeBadge = (type) => TYPE_BADGE[type] || 'bg-[#F1F5F9] text-[#637381]'
 const ch = createColumnHelper()
 
-const columns = [
+const movementColumns = [
   ch.accessor('refNo', {
     header: () => t('erp.stockMovement.colRef'),
     cell: info => h('span', { class: 'font-mono text-xs font-semibold text-[#1C2434] whitespace-nowrap' }, info.getValue() || '—'),
@@ -276,22 +304,88 @@ const columns = [
   }),
 ]
 
+// First column of the grouped view — what the rows are grouped by.
+const GROUP_KEY_COLUMN = {
+  type: () => ch.accessor('type', {
+    header: () => t('erp.stockMovement.colType'),
+    cell: info => h('span', {
+      class: `inline-flex items-center px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${typeBadge(info.getValue())}`,
+    }, typeLabel(info.getValue())),
+  }),
+  product: () => ch.accessor('name', {
+    header: () => t('erp.stockMovement.colProduct'),
+    cell: info => {
+      const r = info.row.original
+      return h('div', { class: 'min-w-0' }, [
+        h('p', { class: 'font-medium text-[#1C2434] truncate' }, r.name || '—'),
+        r.sku ? h('p', { class: 'text-xs text-[#9BA7B0] font-mono mt-0.5' }, r.sku) : null,
+      ])
+    },
+  }),
+  store: () => ch.accessor('name', {
+    header: () => t('erp.stockMovement.colStore'),
+    cell: info => h('span', { class: 'font-medium text-[#1C2434]' }, info.getValue() || '—'),
+  }),
+}
+
+const qtyCell = (value, { positive = false, muted = 'text-[#9BA7B0]' } = {}) => {
+  if (!value) return h('span', { class: `tabular-nums ${muted}` }, '0')
+  const color = value > 0 ? 'text-green-700' : 'text-red-600'
+  return h('span', { class: `tabular-nums font-semibold ${color}` }, `${positive && value > 0 ? '+' : ''}${fmtQty(value)}`)
+}
+
+const groupedColumns = computed(() => [
+  GROUP_KEY_COLUMN[groupBy.value]?.(),
+  ch.accessor('count', {
+    header: () => t('erp.stockMovement.colMovements'),
+    meta: { thClass: 'text-right', tdClass: 'text-right' },
+    cell: info => h('span', { class: 'tabular-nums text-[#637381]' }, fmtQty(info.getValue())),
+  }),
+  ch.accessor('qtyIn', {
+    header: () => t('erp.stockMovement.colIn'),
+    meta: { thClass: 'text-right', tdClass: 'text-right' },
+    cell: info => qtyCell(info.getValue(), { positive: true }),
+  }),
+  ch.accessor('qtyOut', {
+    header: () => t('erp.stockMovement.colOut'),
+    meta: { thClass: 'text-right', tdClass: 'text-right' },
+    cell: info => qtyCell(info.getValue()),
+  }),
+  ch.accessor('qtyNet', {
+    header: () => t('erp.stockMovement.colNet'),
+    meta: { thClass: 'text-right', tdClass: 'text-right' },
+    cell: info => qtyCell(info.getValue(), { positive: true, muted: 'text-[#637381] font-semibold' }),
+  }),
+].filter(Boolean))
+
+const columns = computed(() => groupBy.value ? groupedColumns.value : movementColumns)
+
+function filterParams() {
+  return {
+    search: search.value || undefined,
+    productId: filterProduct.value || undefined,
+    storeId: filterStore.value || undefined,
+    type: filterType.value || undefined,
+    dateFrom: filterDateFrom.value || undefined,
+    dateTo: filterDateTo.value || undefined,
+  }
+}
+
 async function load() {
   loading.value = true
   try {
-    const { data } = await api.get('/erp/stock-movements', {
-      params: {
-        page: page.value, limit,
-        search: search.value || undefined,
-        productId: filterProduct.value || undefined,
-        storeId: filterStore.value || undefined,
-        type: filterType.value || undefined,
-        dateFrom: filterDateFrom.value || undefined,
-        dateTo: filterDateTo.value || undefined,
-      },
-    })
-    rows.value  = data.data.movements
-    total.value = data.data.total
+    if (groupBy.value) {
+      const { data } = await api.get('/erp/stock-movements/summary', {
+        params: { ...filterParams(), groupBy: groupBy.value },
+      })
+      groupRows.value = data.data.groups
+    } else {
+      const { data } = await api.get('/erp/stock-movements', {
+        params: { ...filterParams(), page: page.value, limit },
+      })
+      rows.value  = data.data.movements
+      total.value = data.data.total
+    }
     selectedRowIndex.value = -1
   } finally { loading.value = false }
 }
@@ -315,5 +409,8 @@ function clearFilters() {
 }
 
 watch([page, search], load)
+// Reset to page 1 on group change; load directly when already there since the
+// page watcher won't fire.
+watch(groupBy, () => { if (page.value === 1) load(); else page.value = 1 })
 onMounted(() => { load(); loadLookups() })
 </script>
