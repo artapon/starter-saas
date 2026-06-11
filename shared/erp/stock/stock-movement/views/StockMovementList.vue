@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AppLayout>
     <div class="space-y-5">
 
@@ -40,7 +40,15 @@
               leave-to-class="opacity-0 -translate-y-1">
               <div v-if="showFilters" class="border-b border-[#E2E8F0] bg-slate-50">
                 <div class="px-5 py-4">
-                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div>
+                      <label class="block text-xs font-medium text-[#637381] mb-1.5">{{ t('erp.stockMovement.colProduct') }}</label>
+                      <SearchSelect v-model="filterProduct" :options="products" :placeholder="t('erp.stockMovement.allProducts')" @change="onFilterChange" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-[#637381] mb-1.5">{{ t('erp.stockMovement.colStore') }}</label>
+                      <SearchSelect v-model="filterStore" :options="stores" :placeholder="t('erp.stockMovement.allStores')" @change="onFilterChange" />
+                    </div>
                     <div>
                       <label class="block text-xs font-medium text-[#637381] mb-1.5">{{ t('erp.stockMovement.colType') }}</label>
                       <SearchSelect v-model="filterType" :options="typeOptions" :placeholder="t('erp.stockMovement.allTypes')" @change="onFilterChange" />
@@ -67,21 +75,10 @@
           <template #active-filters>
             <div v-if="activeFilterCount > 0" class="px-5 py-2.5 border-b border-[#E2E8F0] flex items-center gap-2 flex-wrap bg-primary-50/40">
               <span class="text-xs font-medium text-[#637381]">{{ t('common.activeFilters') }}:</span>
-              <span v-if="filterType" class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 bg-white border border-[#E2E8F0] text-xs font-medium text-[#374151]">
-                {{ t('erp.stockMovement.colType') }}: <span class="font-semibold ml-0.5 capitalize">{{ filterType.replace('_', ' ') }}</span>
-                <button @click="filterType = ''; onFilterChange()" class="ml-1 p-0.5 text-[#9BA7B0] hover:text-red-500 transition-colors">
-                  <XMarkIcon class="w-3 h-3" />
-                </button>
-              </span>
-              <span v-if="filterDateFrom" class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 bg-white border border-[#E2E8F0] text-xs font-medium text-[#374151]">
-                {{ t('common.dateFrom') }}: <span class="font-semibold ml-0.5">{{ filterDateFrom }}</span>
-                <button @click="filterDateFrom = ''; onFilterChange()" class="ml-1 p-0.5 text-[#9BA7B0] hover:text-red-500 transition-colors">
-                  <XMarkIcon class="w-3 h-3" />
-                </button>
-              </span>
-              <span v-if="filterDateTo" class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 bg-white border border-[#E2E8F0] text-xs font-medium text-[#374151]">
-                {{ t('common.dateTo') }}: <span class="font-semibold ml-0.5">{{ filterDateTo }}</span>
-                <button @click="filterDateTo = ''; onFilterChange()" class="ml-1 p-0.5 text-[#9BA7B0] hover:text-red-500 transition-colors">
+              <span v-for="chip in activeFilterChips" :key="chip.key"
+                class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 bg-white border border-[#E2E8F0] text-xs font-medium text-[#374151]">
+                {{ chip.label }}: <span class="font-semibold ml-0.5">{{ chip.value }}</span>
+                <button @click="chip.clear(); onFilterChange()" class="ml-1 p-0.5 text-[#9BA7B0] hover:text-red-500 transition-colors">
                   <XMarkIcon class="w-3 h-3" />
                 </button>
               </span>
@@ -98,11 +95,11 @@
               </div>
               <div class="text-center">
                 <p class="text-sm font-medium text-[#637381]">{{ t('erp.stockMovement.noFound') }}</p>
-                <p v-if="activeFilterCount > 0" class="text-xs text-[#9BA7B0] mt-1">Try adjusting your filters</p>
+                <p v-if="activeFilterCount > 0" class="text-xs text-[#9BA7B0] mt-1">{{ t('common.tryAdjustingFilters') }}</p>
               </div>
               <button v-if="activeFilterCount > 0" @click="clearFilters"
                 class="text-xs text-primary-500 hover:text-primary-700 font-medium underline">
-                Clear all filters
+                {{ t('common.clearAll') }}
               </button>
             </div>
           </template>
@@ -127,7 +124,7 @@ import DataTable from '@/components/DataTable.vue'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts.vue'
 import SearchSelect from '@/components/SearchSelect.vue'
 import api from '@/api'
-import { fmtDateTime } from '@/utils/fmt'
+import { fmtDateTime, fmtQty } from '@/utils/fmt'
 
 const { t } = useI18n()
 
@@ -156,17 +153,13 @@ function onKeydown(e) {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
-const typeOptions = computed(() => [
-  { id: 'receive',         name: t('erp.stockMovement.typeReceive')     },
-  { id: 'sale',            name: t('erp.stockMovement.typeSale')        },
-  { id: 'adjust',          name: t('erp.stockMovement.typeAdjustment')  },
-  { id: 'issue',           name: 'Issue'                                },
-  { id: 'count',           name: 'Count'                                },
-  { id: 'transfer_in',     name: t('erp.stockMovement.typeTransferIn')  },
-  { id: 'transfer_out',    name: t('erp.stockMovement.typeTransferOut') },
-  { id: 'customer_return', name: 'Customer Return'                      },
-  { id: 'vendor_return',   name: 'Vendor Return'                        },
-])
+const MOVEMENT_TYPES = [
+  'receive', 'sale', 'issue', 'adjust', 'count',
+  'transfer_in', 'transfer_out', 'customer_return', 'vendor_return',
+]
+const typeLabel   = (type) => t(`erp.movementTypes.${type}`, type?.replace('_', ' '))
+const typeOptions = computed(() => MOVEMENT_TYPES.map(id => ({ id, name: typeLabel(id) })))
+
 const route          = useRoute()
 const rows           = ref([])
 const products       = ref([])
@@ -180,42 +173,87 @@ const filterStore    = ref('')
 const filterType     = ref('')
 const filterDateFrom = ref('')
 const filterDateTo   = ref('')
-const showFilters    = ref(false)
+const showFilters    = ref(!!route.query.productId)
 const loading        = ref(false)
 
-const activeFilterCount = computed(() => [filterType.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length)
+const activeFilterCount = computed(() =>
+  [filterProduct.value, filterStore.value, filterType.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length)
 
+const activeFilterChips = computed(() => [
+  filterProduct.value && {
+    key: 'product', label: t('erp.stockMovement.colProduct'),
+    value: products.value.find(p => p.id === filterProduct.value)?.name || '…',
+    clear: () => { filterProduct.value = '' },
+  },
+  filterStore.value && {
+    key: 'store', label: t('erp.stockMovement.colStore'),
+    value: stores.value.find(s => s.id === filterStore.value)?.name || '…',
+    clear: () => { filterStore.value = '' },
+  },
+  filterType.value && {
+    key: 'type', label: t('erp.stockMovement.colType'),
+    value: typeLabel(filterType.value),
+    clear: () => { filterType.value = '' },
+  },
+  filterDateFrom.value && {
+    key: 'dateFrom', label: t('common.dateFrom'),
+    value: filterDateFrom.value,
+    clear: () => { filterDateFrom.value = '' },
+  },
+  filterDateTo.value && {
+    key: 'dateTo', label: t('common.dateTo'),
+    value: filterDateTo.value,
+    clear: () => { filterDateTo.value = '' },
+  },
+].filter(Boolean))
+
+// Stock-in types read green/cool, stock-out types read warm/red — matches the
+// sign of the qty column so a row's colour story is consistent.
 const TYPE_BADGE = {
-  receive:      'bg-blue-50 text-blue-700',
-  adjust:       'bg-purple-50 text-purple-700',
-  transfer_in:  'bg-green-50 text-green-700',
-  transfer_out: 'bg-orange-50 text-orange-700',
-  sale:         'bg-red-50 text-red-700',
+  receive:         'bg-green-50 text-green-700',
+  transfer_in:     'bg-green-50 text-green-700',
+  customer_return: 'bg-teal-50 text-teal-700',
+  sale:            'bg-red-50 text-red-700',
+  issue:           'bg-orange-50 text-orange-700',
+  transfer_out:    'bg-orange-50 text-orange-700',
+  vendor_return:   'bg-rose-50 text-rose-700',
+  adjust:          'bg-purple-50 text-purple-700',
+  count:           'bg-blue-50 text-blue-700',
 }
 const typeBadge = (type) => TYPE_BADGE[type] || 'bg-[#F1F5F9] text-[#637381]'
 const ch = createColumnHelper()
 
 const columns = [
+  ch.accessor('refNo', {
+    header: () => t('erp.stockMovement.colRef'),
+    cell: info => h('span', { class: 'font-mono text-xs font-semibold text-[#1C2434] whitespace-nowrap' }, info.getValue() || '—'),
+  }),
   ch.accessor('createdAt', {
     header: () => t('erp.stockMovement.colDate'),
     cell: info => h('span', { class: 'text-[#637381] text-xs whitespace-nowrap' }, fmtDateTime(info.getValue())),
-  }),
-  ch.accessor('product', {
-    header: () => t('erp.stockMovement.colProduct'),
-    cell: info => h('span', { class: 'font-medium text-[#1C2434]' }, info.getValue()?.name),
-  }),
-  ch.accessor('store', {
-    header: () => t('erp.stockMovement.colStore'),
-    cell: info => h('span', { class: 'text-[#637381]' }, info.getValue()?.name || '—'),
   }),
   ch.accessor('type', {
     header: () => t('erp.stockMovement.colType'),
     cell: info => {
       const v = info.getValue()
       return h('span', {
-        class: `inline-flex items-center px-2.5 py-1 text-xs font-semibold capitalize ${typeBadge(v)}`,
-      }, v?.replace('_', ' '))
+        class: `inline-flex items-center px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${typeBadge(v)}`,
+      }, typeLabel(v))
     },
+  }),
+  ch.accessor('product', {
+    header: () => t('erp.stockMovement.colProduct'),
+    cell: info => {
+      const p = info.getValue()
+      return h('div', { class: 'min-w-0' }, [
+        h('p', { class: 'font-medium text-[#1C2434] truncate' }, p?.name || '—'),
+        p?.sku ? h('p', { class: 'text-xs text-[#9BA7B0] font-mono mt-0.5' }, p.sku) : null,
+      ])
+    },
+  }),
+  ch.accessor('store', {
+    header: () => t('erp.stockMovement.colStore'),
+    cell: info => h('span', { class: 'text-[#637381]' }, info.getValue()?.name || '—'),
   }),
   ch.accessor('qty', {
     header: () => t('erp.stockMovement.colQty'),
@@ -224,22 +262,17 @@ const columns = [
       const qty = info.getValue()
       return h('span', {
         class: `font-semibold tabular-nums ${qty > 0 ? 'text-green-700' : 'text-red-600'}`,
-      }, `${qty > 0 ? '+' : ''}${qty}`)
+      }, `${qty > 0 ? '+' : ''}${fmtQty(qty)}`)
     },
   }),
-  ch.accessor('stockBefore', {
-    header: () => t('erp.stockMovement.colBefore'),
-    meta: { thClass: 'text-right', tdClass: 'text-right' },
-    cell: info => h('span', { class: 'text-[#637381] tabular-nums' }, info.getValue()),
-  }),
   ch.accessor('stockAfter', {
-    header: () => t('erp.stockMovement.colAfter'),
+    header: () => t('erp.stockMovement.colBalance', 'Balance'),
     meta: { thClass: 'text-right', tdClass: 'text-right' },
-    cell: info => h('span', { class: 'font-semibold text-[#1C2434] tabular-nums' }, info.getValue()),
-  }),
-  ch.accessor('refNo', {
-    header: () => t('erp.stockMovement.colRef'),
-    cell: info => h('span', { class: 'font-mono text-xs text-[#637381]' }, info.getValue() || '—'),
+    cell: info => h('span', { class: 'tabular-nums whitespace-nowrap' }, [
+      h('span', { class: 'text-[#9BA7B0]' }, fmtQty(info.row.original.stockBefore)),
+      h('span', { class: 'text-[#9BA7B0] mx-1.5' }, '→'),
+      h('span', { class: 'font-semibold text-[#1C2434]' }, fmtQty(info.getValue())),
+    ]),
   }),
 ]
 
@@ -275,7 +308,11 @@ async function loadLookups() {
 }
 
 function onFilterChange() { page.value = 1; load() }
-function clearFilters() { filterType.value = ''; filterDateFrom.value = ''; filterDateTo.value = ''; page.value = 1; load() }
+function clearFilters() {
+  filterProduct.value = ''; filterStore.value = ''; filterType.value = ''
+  filterDateFrom.value = ''; filterDateTo.value = ''
+  page.value = 1; load()
+}
 
 watch([page, search], load)
 onMounted(() => { load(); loadLookups() })

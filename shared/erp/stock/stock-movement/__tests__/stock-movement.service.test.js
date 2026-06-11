@@ -1,8 +1,9 @@
 // Unit tests for stock/stock-movement.service.
 //
 // A read-only ledger view: the only function is list(), so all the behaviour
-// is query shaping — pagination math, the three optional filters that are
-// only applied when truthy, the product/store eager-loads, distinct, and the
+// is query shaping — pagination math, the optional filters (refNo search,
+// product/store/type, createdAt date range) that are only applied when
+// truthy, the product/store eager-loads, distinct, and the
 // {total,page,limit,movements} envelope.
 
 jest.mock('../../../../../server/models', () => ({
@@ -11,6 +12,7 @@ jest.mock('../../../../../server/models', () => ({
   Store:         {},
 }))
 
+const { Op } = require('sequelize')
 const { StockMovement } = require('../../../../../server/models')
 const service = require('../stock-movement.service')
 
@@ -48,5 +50,25 @@ describe('stock-movement.list', () => {
   test('omits a filter key entirely when its value is falsy', async () => {
     await service.list({ productId: 'p1', storeId: '', type: '' })
     expect(StockMovement.findAndCountAll.mock.calls[0][0].where).toEqual({ productId: 'p1' })
+  })
+
+  test('search filters by refNo substring', async () => {
+    await service.list({ search: 'GR-2026' })
+    const where = StockMovement.findAndCountAll.mock.calls[0][0].where
+    expect(where.refNo[Op.like]).toBe('%GR-2026%')
+  })
+
+  test('dateFrom/dateTo bound createdAt to start / end of day', async () => {
+    await service.list({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+    const createdAt = StockMovement.findAndCountAll.mock.calls[0][0].where.createdAt
+    expect(createdAt[Op.gte]).toEqual(new Date('2026-01-01T00:00:00'))
+    expect(createdAt[Op.lte]).toEqual(new Date('2026-01-31T23:59:59.999'))
+  })
+
+  test('dateFrom alone applies only the lower bound', async () => {
+    await service.list({ dateFrom: '2026-02-01' })
+    const createdAt = StockMovement.findAndCountAll.mock.calls[0][0].where.createdAt
+    expect(createdAt[Op.gte]).toEqual(new Date('2026-02-01T00:00:00'))
+    expect(createdAt[Op.lte]).toBeUndefined()
   })
 })
