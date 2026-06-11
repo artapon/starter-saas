@@ -391,7 +391,7 @@
         >
           <!-- Quick links rail — the group's flat top-level pages -->
           <div v-if="quickLinks.length" class="w-[220px] flex-shrink-0 bg-[#F7F9FC] border-r border-[#E2E8F0] p-3">
-            <p class="px-2.5 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-[#9BA7B0] uppercase">
+            <p class="px-2.5 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-primary-600 uppercase">
               {{ t('nav.quickLinks') }}
             </p>
             <ul class="space-y-0.5">
@@ -415,7 +415,7 @@
                :style="{ gridTemplateColumns: `repeat(auto-fit, minmax(${MEGA_COL_MIN}px, 1fr))` }">
             <div v-for="col in groupColumns" :key="col.label" class="min-w-0">
 
-              <p class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold tracking-wider text-[#9BA7B0] uppercase">
+              <p class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold tracking-wider text-primary-600 uppercase">
                 <component v-if="col.icon" :is="col.icon" class="w-3.5 h-3.5 flex-shrink-0" />
                 {{ t(col.label) }}
               </p>
