@@ -93,13 +93,6 @@
               </template>
             </FormField>
 
-            <!-- Expected delivery date — credit sales only -->
-            <FormField v-if="form.saleType === 'credit'" name="expectedDeliveryDate" :label="t('erp.orders.expectedDelivery')" :errors="errors">
-              <template #default>
-                <DateInput v-model="form.expectedDeliveryDate" class="input" />
-              </template>
-            </FormField>
-
             <!-- Currency -->
             <div>
               <FieldLabel :text="t('erp.common.currency')" />
@@ -598,7 +591,7 @@ const { shortcuts } = useFormShortcuts({
 
 const form = ref({
   customerId: '', orderDate: '', currency: '', exchangeRate: 1, notes: '', items: [],
-  referenceNumber: '', expectedDeliveryDate: '', paymentTerms: '', salespersonId: '',
+  referenceNumber: '', paymentTerms: '', salespersonId: '',
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
   saleType: 'credit',
@@ -613,10 +606,8 @@ function cycleSaleType(dir) {
   const idx  = opts.findIndex(o => o.value === form.value.saleType)
   form.value.saleType = opts[(idx + dir + opts.length) % opts.length].value
 }
-// Cash sales settle immediately — no credit terms or expected delivery date.
-// Clear both when switching to cash so stale values aren't saved.
 watch(() => form.value.saleType, (st) => {
-  if (st === 'cash') { form.value.paymentTerms = ''; form.value.expectedDeliveryDate = '' }
+  if (st === 'cash') { form.value.paymentTerms = '' }
 })
 
 // Dirty tracking: warn on tab close / Discard click after the user changes
@@ -726,7 +717,7 @@ onMounted(async () => {
     exchangeRate: o.exchangeRate != null ? Number(o.exchangeRate) : 1,
     notes:        o.notes        || '',
     referenceNumber:      o.referenceNumber      || '',
-    expectedDeliveryDate: o.expectedDeliveryDate || '',
+
     paymentTerms:         o.paymentTerms         || '',
     salespersonId:        o.salespersonId        || '',
     shippingAddress:      o.shippingAddress      || '',
@@ -1191,7 +1182,7 @@ async function save({ redirect = true } = {}) {
       exchangeRate: form.value.exchangeRate,
       notes:        form.value.notes,
       referenceNumber:      form.value.referenceNumber      || null,
-      expectedDeliveryDate: form.value.expectedDeliveryDate || null,
+
       paymentTerms:         form.value.paymentTerms         || null,
       salespersonId:        form.value.salespersonId        || null,
       shippingAddress:      form.value.shippingAddress      || null,

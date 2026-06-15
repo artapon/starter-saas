@@ -86,13 +86,6 @@
               </template>
             </FormField>
 
-            <!-- Expected delivery date — credit sales only -->
-            <FormField v-if="form.saleType === 'credit'" name="expectedDeliveryDate" :label="t('erp.orders.expectedDelivery')" :errors="errors">
-              <template #default>
-                <DateInput v-model="form.expectedDeliveryDate" class="input" />
-              </template>
-            </FormField>
-
             <!-- Currency -->
             <div>
               <FieldLabel :text="t('erp.common.currency')" />
@@ -589,7 +582,7 @@ const paymentTerms = ref([])
 const today = new Date().toISOString().slice(0, 10)
 const form  = ref({
   customerId: '', orderDate: today, currency: '', exchangeRate: 1, notes: '', items: [],
-  referenceNumber: '', expectedDeliveryDate: '', paymentTerms: '', salespersonId: '',
+  referenceNumber: '', paymentTerms: '', salespersonId: '',
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
   // Cash = SO → DO → Receipt | Credit = SO → DO → Invoice. Defaults from
@@ -606,10 +599,8 @@ function cycleSaleType(dir) {
   const idx  = opts.findIndex(o => o.value === form.value.saleType)
   form.value.saleType = opts[(idx + dir + opts.length) % opts.length].value
 }
-// Cash sales settle immediately — no credit terms or expected delivery date.
-// Clear both when switching to cash so stale values aren't saved.
 watch(() => form.value.saleType, (st) => {
-  if (st === 'cash') { form.value.paymentTerms = ''; form.value.expectedDeliveryDate = '' }
+  if (st === 'cash') { form.value.paymentTerms = '' }
 })
 const billingSameAsShipping = ref(true)
 
