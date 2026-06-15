@@ -392,7 +392,7 @@
                     <option value="fixed">{{ form.currency || '฿' }}</option>
                   </select>
                   <input v-model.number="form.discountValue" type="number" min="0" step="0.01" placeholder="0"
-                    :disabled="!form.discountType"
+                    :disabled="!form.discountType" :max="orderDiscountMax" @input="clampOrderDiscount"
                     class="w-20 px-2 py-1.5 border border-[#E2E8F0] text-[12px] text-right tabular-nums
                            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
                            disabled:bg-[#F7F9FC] disabled:text-[#9BA7B0]" />
@@ -1247,11 +1247,33 @@ const subtotal   = computed(() => taxInclusive.value
 const discountAmount = computed(() => {
   const gross = Number(subtotal.value) + Number(taxAmount.value)
   const v = Number(form.value.discountValue) || 0
-  if (form.value.discountType === 'percent') return toFixed(gross * v / 100, 2)
+  if (form.value.discountType === 'percent') return toFixed(Math.min(gross * v / 100, gross), 2)
   if (form.value.discountType === 'fixed')   return toFixed(Math.min(v, gross), 2)
   return 0
 })
 const grandTotal = computed(() => Number(subtotal.value) + Number(taxAmount.value) - Number(discountAmount.value))
+
+// The order discount can't exceed the order total: percent ≤ 100, fixed ≤ gross.
+// Clamp on input and whenever the cap changes (type switch / totals change).
+const orderDiscountMax = computed(() =>
+  form.value.discountType === 'percent' ? 100 : Number(subtotal.value) + Number(taxAmount.value))
+function clampOrderDiscount() {
+  const max = orderDiscountMax.value
+  let v = Number(form.value.discountValue) || 0
+  if (v < 0) v = 0
+  if (v > max) v = toFixed(max, 2)
+  if (v !== form.value.discountValue) form.value.discountValue = v
+}
+watch(orderDiscountMax, clampOrderDiscount)
+
+// Keep each line's fixed discount within its line price as qty/price change.
+watch(() => form.value.items.map(l => `${l.discountType}:${l.discountValue}:${lineGross(l)}`).join('|'), () => {
+  for (const line of form.value.items) {
+    if (line.discountType !== 'fixed') continue
+    const gross = lineGross(line)
+    if ((Number(line.discountValue) || 0) > gross) line.discountValue = toFixed(gross, 2)
+  }
+})
 
 const canSave = computed(() => {
   if (!form.value.customerId || !form.value.orderDate) return false

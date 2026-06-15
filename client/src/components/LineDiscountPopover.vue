@@ -39,7 +39,7 @@
           <!-- Value input with the active unit as a suffix -->
           <div class="flex items-center border border-[#E2E8F0] focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-400">
             <input ref="valueInput" v-model.number="localValue" type="number" min="0" step="0.01"
-              :max="localType === 'percent' ? 100 : undefined" placeholder="0"
+              :max="valueCap" placeholder="0"
               @keydown.enter.prevent="close" @keydown.escape.prevent="close"
               class="flex-1 w-full px-2 py-1.5 text-[13px] text-right tabular-nums text-[#1C2434]
                      focus:outline-none placeholder:text-[#CBD5E1]" />
@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
 import { fmtMoney, toFixed } from '@/utils/fmt'
 
 const props = defineProps({
@@ -91,9 +91,16 @@ const localType = computed({
   get: () => (props.type === 'fixed' ? 'fixed' : 'percent'),
   set: (v) => emit('update:type', v === 'fixed' ? 'fixed' : 'percent'),
 })
+// Cap the value so a discount can't exceed the line: percent ≤ 100, fixed ≤ base.
+const valueCap = computed(() => (localType.value === 'fixed' ? (Number(props.base) || 0) : 100))
 const localValue = computed({
   get: () => Number(props.value) || 0,
-  set: (v) => emit('update:value', Number(v) || 0),
+  set: (v) => {
+    let n = Number(v) || 0
+    if (n < 0) n = 0
+    if (n > valueCap.value) n = valueCap.value
+    emit('update:value', n)
+  },
 })
 
 const hasDiscount = computed(() => localValue.value > 0)
@@ -117,8 +124,15 @@ const triggerLabel = computed(() => {
 function setType(next) {
   if (localType.value === next) return
   localType.value = next
+  // Re-clamp the existing value against the new cap (e.g. % → fixed).
+  if (localValue.value > valueCap.value) localValue.value = valueCap.value
   nextTick(() => valueInput.value?.focus())
 }
+
+// Keep the value within the cap when the line price (base) changes under it.
+watch(valueCap, (cap) => {
+  if (localValue.value > cap) localValue.value = cap
+})
 
 function clear() {
   localValue.value = 0

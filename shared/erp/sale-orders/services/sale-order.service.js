@@ -71,13 +71,24 @@ const splitLineTax = (amount, rate, inclusive) => {
   return { net: toFixed(a, 2), tax, total: toFixed(a + Number(tax), 2) }
 }
 
-// A line discount is either a percentage of the line gross or a fixed amount
-// (capped at the gross so a line can't go negative).
+// A line discount is either a percentage of the line gross or a fixed amount.
+// Either way it's clamped to [0, lineGross] so a discount can never exceed the
+// line price (and a line can never go negative) — enforced regardless of what
+// the client sends.
 const lineDiscount = (lineGross, type, value) => {
   const v = Number(value) || 0
-  return type === 'fixed'
-    ? toFixed(Math.min(v, lineGross), 2)
-    : toFixed(lineGross * (v / 100), 2)
+  const raw = type === 'fixed' ? v : lineGross * (v / 100)
+  return toFixed(Math.min(Math.max(raw, 0), lineGross), 2)
+}
+
+// Order-level discount clamped to [0, grossTotal] so it can never exceed the
+// order total.
+const orderDiscount = (grossTotal, type, value) => {
+  const v = Number(value) || 0
+  const raw = type === 'percent' ? grossTotal * (v / 100)
+            : type === 'fixed'   ? v
+            : 0
+  return toFixed(Math.min(Math.max(raw, 0), grossTotal), 2)
 }
 
 // Express a stored line's discount as a percentage of its gross. Used when
@@ -110,10 +121,7 @@ const computeTotals = (items, { discountType, discountValue, taxInclusive = fals
   const tax      = lines.reduce((s, l) => s + Number(l.taxAmount), 0)
   const grossTotal = subtotal + tax
 
-  let discountAmount = 0
-  if (discountType === 'percent') discountAmount = grossTotal * (Number(discountValue) || 0) / 100
-  else if (discountType === 'fixed') discountAmount = Math.min(Number(discountValue) || 0, grossTotal)
-  discountAmount = toFixed(discountAmount, 2)
+  const discountAmount = orderDiscount(grossTotal, discountType, discountValue)
 
   return {
     subtotal: toFixed(subtotal, 2),
@@ -393,13 +401,11 @@ const update = async (id, payload, userId, organizationId) => {
         const dValue = discountValue !== undefined ? (Number(discountValue) || 0) : Number(order.discountValue) || 0
         const sub = Number(order.subtotal) || 0
         const tax = Number(order.tax) || 0
-        let amt = 0
-        if (dType === 'percent') amt = (sub + tax) * dValue / 100
-        else if (dType === 'fixed') amt = Math.min(dValue, sub + tax)
+        const amt = orderDiscount(sub + tax, dType, dValue)
         headerExtras.discountType   = dType
         headerExtras.discountValue  = dValue
-        headerExtras.discountAmount = toFixed(amt, 2)
-        headerExtras.total          = toFixed(sub + tax - amt, 2)
+        headerExtras.discountAmount = amt
+        headerExtras.total          = toFixed(sub + tax - Number(amt), 2)
       }
       await order.update({ customerId: customerId || null, orderDate, notes, ...headerExtras, modifiedBy: userId || null }, { transaction: t })
     }
