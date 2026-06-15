@@ -112,13 +112,12 @@
             <!-- Sale type: cash → Receipt, credit → Invoice -->
             <div>
               <FieldLabel :text="t('erp.orders.saleType')" required />
-              <div class="flex gap-2">
+              <div class="flex border border-[#E2E8F0] overflow-hidden text-sm">
                 <button v-for="opt in SALE_TYPE_OPTIONS" :key="opt.value" type="button"
                   @click="form.saleType = opt.value"
-                  :class="['flex-1 px-3 py-2.5 text-[13px] font-semibold border transition-colors',
-                    form.saleType === opt.value
-                      ? 'bg-primary-50 border-primary-300 text-primary-700'
-                      : 'bg-white border-[#E2E8F0] text-[#637381] hover:bg-slate-50']">
+                  :class="form.saleType === opt.value
+                    ? 'flex-1 py-2.5 bg-primary-500 text-white font-semibold'
+                    : 'flex-1 py-2.5 bg-white text-[#637381] hover:bg-[#F7F9FC]'">
                   {{ opt.label }}
                 </button>
               </div>
