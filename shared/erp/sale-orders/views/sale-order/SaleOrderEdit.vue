@@ -39,6 +39,32 @@
         <FormCard :title="t('erp.orders.customerInfo')" :icon="UserIcon" icon-color="primary" :padded="false">
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-5">
 
+            <!-- Sale type: cash → Receipt, credit → Invoice -->
+            <div ref="saleTypeContainerRef"
+              @keydown.left.prevent="cycleSaleType(-1)"
+              @keydown.right.prevent="cycleSaleType(1)">
+              <FieldLabel :text="t('erp.orders.saleType')" required />
+              <div class="flex border border-[#E2E8F0] overflow-hidden text-sm">
+                <button v-for="opt in SALE_TYPE_OPTIONS" :key="opt.value" type="button"
+                  @click="form.saleType = opt.value"
+                  :class="form.saleType === opt.value
+                    ? 'flex-1 py-2.5 bg-primary-500 text-white font-semibold'
+                    : 'flex-1 py-2.5 bg-white text-[#637381] hover:bg-[#F7F9FC]'">
+                  {{ opt.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Payment terms — credit sales only (from master-data) -->
+            <FormField v-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
+              <template #default="{ id }">
+                <select :id="id" v-model="form.paymentTerms" class="input">
+                  <option value="">—</option>
+                  <option v-for="opt in paymentTerms" :key="opt.id" :value="opt.code || opt.name">{{ opt.name }}</option>
+                </select>
+              </template>
+            </FormField>
+
             <!-- Reference / PO # -->
             <FormField name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors">
               <template #default="{ id }">
@@ -98,30 +124,6 @@
                 <template #singleLabel="{ option }">{{ option.name }}</template>
               </SearchSelect>
             </div>
-
-            <!-- Sale type: cash → Receipt, credit → Invoice -->
-            <div>
-              <FieldLabel :text="t('erp.orders.saleType')" required />
-              <div class="flex border border-[#E2E8F0] overflow-hidden text-sm">
-                <button v-for="opt in SALE_TYPE_OPTIONS" :key="opt.value" type="button"
-                  @click="form.saleType = opt.value"
-                  :class="form.saleType === opt.value
-                    ? 'flex-1 py-2.5 bg-primary-500 text-white font-semibold'
-                    : 'flex-1 py-2.5 bg-white text-[#637381] hover:bg-[#F7F9FC]'">
-                  {{ opt.label }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Payment terms — credit sales only (from master-data) -->
-            <FormField v-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
-              <template #default="{ id }">
-                <select :id="id" v-model="form.paymentTerms" class="input">
-                  <option value="">—</option>
-                  <option v-for="opt in paymentTerms" :key="opt.id" :value="opt.code || opt.name">{{ opt.name }}</option>
-                </select>
-              </template>
-            </FormField>
 
           </div>
         </FormCard>
@@ -575,8 +577,9 @@ const customerCreateOpen = ref(false)
 const newCustomer        = ref({ name: '', company: '', email: '', phone: '', address: '' })
 const newCustomerError   = ref('')
 const newCustomerSaving  = ref(false)
-const newCustomerNameRef = ref(null)
-const referenceInputRef  = ref(null)
+const newCustomerNameRef    = ref(null)
+const referenceInputRef     = ref(null)
+const saleTypeContainerRef  = ref(null)
 
 const { shortcuts } = useFormShortcuts({
   save: () => save(),
@@ -589,6 +592,7 @@ const { shortcuts } = useFormShortcuts({
     { combo: 'ctrl+a', handler: () => openBulkPicker(), hint: { key: 'Ctrl+A', label: 'Add item' } },
     { combo: 'alt+i',  handler: () => openBulkPicker() },
     { combo: 'alt+c',  handler: () => openCustomerCreate(), hint: { key: 'Alt+C', label: 'New customer' } },
+    { combo: '', hint: { key: '← →', label: 'Change sale type' } },
   ],
 })
 
@@ -604,6 +608,11 @@ const SALE_TYPE_OPTIONS = computed(() => [
   { value: 'cash',   label: t('erp.orders.saleTypeCash') },
   { value: 'credit', label: t('erp.orders.saleTypeCredit') },
 ])
+function cycleSaleType(dir) {
+  const opts = SALE_TYPE_OPTIONS.value
+  const idx  = opts.findIndex(o => o.value === form.value.saleType)
+  form.value.saleType = opts[(idx + dir + opts.length) % opts.length].value
+}
 // Cash sales settle immediately — no credit terms or expected delivery date.
 // Clear both when switching to cash so stale values aren't saved.
 watch(() => form.value.saleType, (st) => {
@@ -749,7 +758,7 @@ onMounted(async () => {
   // Arm dirty tracking after the load settles so the parse doesn't trip it.
   await nextTick()
   dirtyArmed = true
-  referenceInputRef.value?.focus()
+  saleTypeContainerRef.value?.querySelector('button')?.focus()
 })
 
 // Auto-populate addresses when customer changes and the field is empty.
