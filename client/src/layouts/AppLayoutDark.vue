@@ -67,22 +67,27 @@
                 </RouterLink>
               </li>
 
-              <!-- Group item -->
-              <li v-else>
+              <!-- Group item — accordion on mobile, flyout mega panel on md+ -->
+              <li v-else @mouseenter="onGroupEnter(item, $event)" @mouseleave="scheduleFlyoutClose">
                 <button
-                  @click="toggleGroup(item.label)"
+                  data-flyout
+                  @click="onGroupClick(item, $event)"
                   class="dark-nav-item w-full"
-                  :class="{ 'bg-white/[0.04] text-white': openGroups.has(item.label) }"
+                  :class="{
+                    'bg-white/[0.04] text-white': openGroups.has(item.label) || flyoutOpen === item.label,
+                    'dark-nav-item-active': isGroupActive(item),
+                  }"
                 >
                   <component :is="item.icon" class="w-[18px] h-[18px] flex-shrink-0" />
                   <span class="flex-1 text-left truncate">{{ t(item.label) }}</span>
+                  <ChevronRightIcon class="hidden md:block w-3.5 h-3.5 text-[#8D9BB4] flex-shrink-0" />
                   <ChevronDownIcon
-                    class="w-3.5 h-3.5 text-[#8D9BB4] transition-transform duration-200 flex-shrink-0"
+                    class="md:hidden w-3.5 h-3.5 text-[#8D9BB4] transition-transform duration-200 flex-shrink-0"
                     :class="{ 'rotate-180': openGroups.has(item.label) }"
                   />
                 </button>
 
-                <ul v-if="openGroups.has(item.label)" class="mt-0.5 ml-3 pl-3 border-l border-white/[0.07] space-y-0.5">
+                <ul v-if="openGroups.has(item.label)" class="md:hidden mt-0.5 ml-3 pl-3 border-l border-white/[0.07] space-y-0.5">
                   <template v-for="child in item.children" :key="child.label || child.to">
 
                     <!-- Nested group -->
@@ -317,6 +322,10 @@
     </div>
   </div>
 
+  <!-- Desktop flyout for sidebar groups -->
+  <NavFlyout :item="flyoutItem" :pos="flyoutPos"
+    @enter="cancelFlyoutClose" @leave="scheduleFlyoutClose" @navigate="closeFlyout" />
+
   <!-- AI Chat slide-over -->
   <AiChatPanel v-model="chatOpen" />
 </template>
@@ -325,13 +334,15 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import {
-  ChevronDownIcon, ArrowRightOnRectangleIcon,
+  ChevronDownIcon, ChevronRightIcon, ArrowRightOnRectangleIcon,
   Bars3Icon, XMarkIcon, SparklesIcon, UserCircleIcon, ComputerDesktopIcon, CreditCardIcon,
 } from '@heroicons/vue/24/outline'
 import { useI18n } from 'vue-i18n'
 import { useAppLayout } from '@/composables/useAppLayout'
+import { useNavFlyout } from '@/composables/useNavFlyout'
 import AlertBell from '@/components/AlertBell.vue'
 import AiChatPanel from '@/components/AiChatPanel.vue'
+import NavFlyout from '@/components/NavFlyout.vue'
 
 const {
   auth,
@@ -346,6 +357,14 @@ const {
 const { locale, t } = useI18n()
 const router = useRouter()
 const route  = useRoute()
+
+// Desktop flyout (mega menu) for sidebar groups — see useNavFlyout.
+const {
+  flyoutOpen, flyoutItem, flyoutPos,
+  onGroupEnter, onGroupClick,
+  scheduleFlyoutClose, cancelFlyoutClose, closeFlyout,
+  isGroupActive,
+} = useNavFlyout(navSections, { toggleGroup })
 
 const sidebarOpen = ref(false)
 const chatOpen    = ref(false)

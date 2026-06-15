@@ -1,5 +1,5 @@
 import {
-  ChartPieIcon, PresentationChartLineIcon, Squares2X2Icon,
+  ChartPieIcon, PresentationChartLineIcon,
   BookOpenIcon, TableCellsIcon, ScaleIcon, DocumentChartBarIcon,
   ClipboardDocumentListIcon, ChartBarIcon, ArchiveBoxIcon, ArrowsRightLeftIcon,
 } from '@heroicons/vue/24/outline'
@@ -78,13 +78,8 @@ export default {
     label: 'nav.reporting',
     icon: ChartPieIcon,
     children: [
-      {
-        label: 'nav.reportingDashboard',
-        icon: Squares2X2Icon,
-        children: [
-          { label: 'nav.reportingOverview', to: '/reporting/erp-summary', icon: PresentationChartLineIcon, permission: 'erp.products.list' },
-        ],
-      },
+      // Flat children render in the mega menu's quick-links rail
+      { label: 'nav.reportingOverview', to: '/reporting/erp-summary', icon: PresentationChartLineIcon, permission: 'erp.products.list' },
       {
         label: 'nav.accounting',
         icon: BookOpenIcon,
