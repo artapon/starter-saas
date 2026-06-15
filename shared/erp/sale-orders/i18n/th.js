@@ -47,7 +47,7 @@ export default {
       netTotal:     'ยอดชำระสุทธิ',
       total:        'ยอดสุทธิ',
       subtotal:     'มูลค่าก่อน VAT',
-      createOrder:  'สร้างใบสั่ง',
+      createOrder:  'สร้างใบสั่งขาย',
       editOrder:    'แก้ไขใบสั่ง',
       discard:      'ยกเลิก',
       updateStatus: 'อัปเดตสถานะ',
