@@ -83,16 +83,6 @@
               <CurrencySelector v-model="form.currency" v-model:exchangeRate="form.exchangeRate" :as-of-date="form.orderDate" />
             </div>
 
-            <!-- Payment terms -->
-            <FormField name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
-              <template #default="{ id }">
-                <select :id="id" v-model="form.paymentTerms" class="input">
-                  <option value="">—</option>
-                  <option v-for="opt in paymentTerms" :key="opt.id" :value="opt.code || opt.name">{{ opt.name }}</option>
-                </select>
-              </template>
-            </FormField>
-
             <!-- Salesperson -->
             <div>
               <FieldLabel :text="t('erp.orders.salesperson')" />
@@ -115,6 +105,16 @@
                 </button>
               </div>
             </div>
+
+            <!-- Payment terms — credit sales only (from master-data) -->
+            <FormField v-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
+              <template #default="{ id }">
+                <select :id="id" v-model="form.paymentTerms" class="input">
+                  <option value="">—</option>
+                  <option v-for="opt in paymentTerms" :key="opt.id" :value="opt.code || opt.name">{{ opt.name }}</option>
+                </select>
+              </template>
+            </FormField>
 
           </div>
         </FormCard>
@@ -613,6 +613,8 @@ const SALE_TYPE_OPTIONS = computed(() => [
   { value: 'cash',   label: t('erp.orders.saleTypeCash') },
   { value: 'credit', label: t('erp.orders.saleTypeCredit') },
 ])
+// Cash sales have no credit terms — clear any selected term when switching to cash.
+watch(() => form.value.saleType, (st) => { if (st === 'cash') form.value.paymentTerms = '' })
 const billingSameAsShipping = ref(true)
 
 // Once a draft has been saved-without-redirect we have an order id, so further
