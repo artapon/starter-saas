@@ -328,7 +328,7 @@
                   :title="line.isPackage ? t('erp.orders.removePackage') : t('common.delete')"
                   class="w-7 h-7 flex items-center justify-center flex-shrink-0
                          text-[#94A3B8] border border-[#E2E8F0] bg-white
-                         hover:text-white hover:bg-red-500 hover:border-red-500 transition-colors">
+                         hover:text-red-600 hover:border-red-500 transition-colors">
                   <TrashIcon class="w-4 h-4" />
                 </button>
               </div>
