@@ -112,6 +112,15 @@
               </template>
             </FormField>
 
+            <!-- VAT -->
+            <div>
+              <FieldLabel :text="t('erp.orders.vat')" />
+              <select v-model.number="form.vatRate" class="input">
+                <option :value="0">— (0%)</option>
+                <option :value="7">7%</option>
+              </select>
+            </div>
+
             <!-- Currency -->
             <div>
               <FieldLabel :text="t('erp.common.currency')" />
@@ -354,18 +363,9 @@
                 <dt class="text-[#637381]">{{ t('erp.orders.subtotal') }}</dt>
                 <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(subtotal) }}</dd>
               </div>
-              <!-- VAT selector -->
-              <div class="flex items-center justify-between text-[13px] gap-3">
-                <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.vat') }}</dt>
-                <div class="flex items-center gap-1.5">
-                  <select v-model.number="form.vatRate"
-                    class="px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
-                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
-                    <option :value="0">—</option>
-                    <option :value="7">7%</option>
-                  </select>
-                  <span class="text-[13px] font-semibold text-[#1C2434] tabular-nums w-20 text-right">{{ fmtMoney(taxAmount) }}</span>
-                </div>
+              <div class="flex items-center justify-between text-[13px]">
+                <dt class="text-[#637381]">{{ t('erp.orders.vat') }}{{ form.vatRate ? ` (${form.vatRate}%)` : '' }}</dt>
+                <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(taxAmount) }}</dd>
               </div>
               <div class="flex items-center justify-between text-[13px] gap-3">
                 <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.discount') }}</dt>
