@@ -56,7 +56,7 @@
             </div>
 
             <!-- Customer -->
-            <div class="lg:col-span-2">
+            <div>
               <FieldLabel :text="t('erp.orders.customer')" required />
               <div class="flex gap-2 items-start">
                 <div class="flex-1 min-w-0 customer-field">
@@ -354,9 +354,18 @@
                 <dt class="text-[#637381]">{{ t('erp.orders.subtotal') }}</dt>
                 <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(subtotal) }}</dd>
               </div>
-              <div class="flex items-center justify-between text-[13px]">
-                <dt class="text-[#637381]">{{ t('erp.orders.tax') }}</dt>
-                <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(taxAmount) }}</dd>
+              <!-- VAT selector -->
+              <div class="flex items-center justify-between text-[13px] gap-3">
+                <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.vat') }}</dt>
+                <div class="flex items-center gap-1.5">
+                  <select v-model.number="form.vatRate"
+                    class="px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
+                    <option :value="0">—</option>
+                    <option :value="7">7%</option>
+                  </select>
+                  <span class="text-[13px] font-semibold text-[#1C2434] tabular-nums w-20 text-right">{{ fmtMoney(taxAmount) }}</span>
+                </div>
               </div>
               <div class="flex items-center justify-between text-[13px] gap-3">
                 <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.discount') }}</dt>
@@ -592,6 +601,7 @@ const { shortcuts } = useFormShortcuts({
 const form = ref({
   customerId: '', orderDate: '', currency: '', exchangeRate: 1, notes: '', items: [],
   referenceNumber: '', paymentTerms: '', salespersonId: '',
+  vatRate: 0,
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
   saleType: 'credit',
@@ -608,6 +618,9 @@ function cycleSaleType(dir) {
 }
 watch(() => form.value.saleType, (st) => {
   if (st === 'cash') { form.value.paymentTerms = '' }
+})
+watch(() => form.value.vatRate, (rate) => {
+  for (const line of form.value.items) line.taxRate = rate
 })
 
 // Dirty tracking: warn on tab close / Discard click after the user changes
@@ -717,7 +730,7 @@ onMounted(async () => {
     exchangeRate: o.exchangeRate != null ? Number(o.exchangeRate) : 1,
     notes:        o.notes        || '',
     referenceNumber:      o.referenceNumber      || '',
-
+    vatRate:              Number(o.items?.find(i => !i.parentItemId)?.taxRate) || 0,
     paymentTerms:         o.paymentTerms         || '',
     salespersonId:        o.salespersonId        || '',
     shippingAddress:      o.shippingAddress      || '',
@@ -833,11 +846,7 @@ onMounted(() => window.addEventListener('keydown', onModalKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onModalKeydown))
 
 function defaultTaxRate() {
-  for (let i = form.value.items.length - 1; i >= 0; i--) {
-    if (form.value.items[i].isPackage) continue
-    return Number(form.value.items[i].taxRate) || 0
-  }
-  return Number(settings.tax?.rate) || 0
+  return form.value.vatRate
 }
 
 // Pre-selected store for new product lines (ERP Settings → Sale Orders).
@@ -1022,7 +1031,7 @@ async function linesFromPackage(packageId) {
       productName:   pkg.name,
       quantity:      1,
       unitPrice:     parentPrice,
-      taxRate:       Number(settings.tax?.rate) || 0,
+      taxRate:       form.value.vatRate,
     }
     return [parent, ...children]
   } catch {
@@ -1122,7 +1131,7 @@ const itemsSubtitle = computed(() => {
   return parts.join(' · ')
 })
 const subtotal   = computed(() => form.value.items.reduce((s, i) => s + lineNet(i), 0))
-const taxAmount  = computed(() => toFixed(form.value.items.reduce((s, i) => s + lineTax(i), 0), 2))
+const taxAmount  = computed(() => toFixed(subtotal.value * (form.value.vatRate / 100), 2))
 const discountAmount = computed(() => {
   const gross = subtotal.value + Number(taxAmount.value)
   const v = Number(form.value.discountValue) || 0

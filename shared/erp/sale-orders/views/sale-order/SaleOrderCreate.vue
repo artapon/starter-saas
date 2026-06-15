@@ -348,9 +348,18 @@
                 <dt class="text-[#637381]">{{ t('erp.orders.subtotal') }}</dt>
                 <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(subtotal) }}</dd>
               </div>
-              <div class="flex items-center justify-between text-[13px]">
-                <dt class="text-[#637381]">{{ t('erp.orders.tax') }}</dt>
-                <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(taxAmount) }}</dd>
+              <!-- VAT selector -->
+              <div class="flex items-center justify-between text-[13px] gap-3">
+                <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.vat') }}</dt>
+                <div class="flex items-center gap-1.5">
+                  <select v-model.number="form.vatRate"
+                    class="px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
+                    <option :value="0">—</option>
+                    <option :value="7">7%</option>
+                  </select>
+                  <span class="text-[13px] font-semibold text-[#1C2434] tabular-nums w-20 text-right">{{ fmtMoney(taxAmount) }}</span>
+                </div>
               </div>
               <!-- Discount input row -->
               <div class="flex items-center justify-between text-[13px] gap-3">
@@ -583,6 +592,7 @@ const today = new Date().toISOString().slice(0, 10)
 const form  = ref({
   customerId: '', orderDate: today, currency: '', exchangeRate: 1, notes: '', items: [],
   referenceNumber: '', paymentTerms: '', salespersonId: '',
+  vatRate: Number(settings.tax?.rate) || 0,
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
   // Cash = SO → DO → Receipt | Credit = SO → DO → Invoice. Defaults from
@@ -601,6 +611,9 @@ function cycleSaleType(dir) {
 }
 watch(() => form.value.saleType, (st) => {
   if (st === 'cash') { form.value.paymentTerms = '' }
+})
+watch(() => form.value.vatRate, (rate) => {
+  for (const line of form.value.items) line.taxRate = rate
 })
 const billingSameAsShipping = ref(true)
 
@@ -778,12 +791,7 @@ function scrollFocused(e) {
 }
 
 function defaultTaxRate() {
-  // Prefer the previous *priced* row's rate (skip package headers, which are 0).
-  for (let i = form.value.items.length - 1; i >= 0; i--) {
-    if (form.value.items[i].isPackage) continue
-    return Number(form.value.items[i].taxRate) || 0
-  }
-  return Number(settings.tax?.rate) || 0
+  return form.value.vatRate
 }
 
 // Pre-selected store for new product lines (ERP Settings → Sale Orders).
@@ -980,7 +988,7 @@ async function linesFromPackage(packageId) {
       productName:   pkg.name,
       quantity:      1,
       unitPrice:     parentPrice,
-      taxRate:       Number(settings.tax?.rate) || 0,
+      taxRate:       form.value.vatRate,
     }
     return [parent, ...children]
   } catch {
@@ -1105,7 +1113,7 @@ const itemsSubtitle = computed(() => {
   return parts.join(' · ')
 })
 const subtotal   = computed(() => form.value.items.reduce((s, i) => s + lineNet(i), 0))
-const taxAmount  = computed(() => toFixed(form.value.items.reduce((s, i) => s + lineTax(i), 0), 2))
+const taxAmount  = computed(() => toFixed(subtotal.value * (form.value.vatRate / 100), 2))
 const discountAmount = computed(() => {
   const gross = subtotal.value + Number(taxAmount.value)
   const v = Number(form.value.discountValue) || 0

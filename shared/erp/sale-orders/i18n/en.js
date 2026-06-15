@@ -37,6 +37,7 @@ export default {
       orderSummary: 'Order Summary',
       items:        'Items',
       tax:          'Tax',
+      vat:          'VAT',
       total:        'Total',
       subtotal:     'Subtotal',
       createOrder:  'Create Order',

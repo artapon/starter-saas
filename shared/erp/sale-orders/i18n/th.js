@@ -37,6 +37,7 @@ export default {
       orderSummary: 'สรุปคำสั่ง',
       items:        'รายการ',
       tax:          'ภาษี',
+      vat:          'ภาษีมูลค่าเพิ่ม',
       total:        'รวม',
       subtotal:     'ยอดก่อนภาษี',
       createOrder:  'สร้างใบสั่ง',
