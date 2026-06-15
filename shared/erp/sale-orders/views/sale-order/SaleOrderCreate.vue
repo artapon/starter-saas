@@ -239,7 +239,8 @@
                   :options="groupedItemOptions"
                   group-values="items"
                   group-label="label"
-                  meta-key="meta"
+                  :meta-columns="itemMetaColumns"
+                  :label-header="t('erp.orders.saleItem')"
                   placeholder="— Item —"
                   search-placeholder="Search by code or name…"
                   @change="onPickerChange(line, idx)"
@@ -348,7 +349,8 @@
             :options="groupedItemOptions"
             group-values="items"
             group-label="label"
-            meta-key="meta"
+            :meta-columns="itemMetaColumns"
+            :label-header="t('erp.orders.saleItem')"
             multiple
             hide-trigger
             search-placeholder="Search by code or name…"
@@ -699,10 +701,16 @@ const selectedCustomer = computed(() =>
 )
 
 // Grouped options for the line-item picker: Sale Items + Sale Packages
+// Picker columns: price + on-hand, shown right-aligned next to each item.
+const itemMetaColumns = computed(() => [
+  { key: 'priceLabel', header: t('erp.orders.unitPrice'), width: 100 },
+  { key: 'stockLabel', header: t('erp.orders.stock'),     width: 84 },
+])
+
 const groupedItemOptions = computed(() => {
   const groups = [{
     label: t('erp.orders.saleItems'),
-    items: saleItems.value.map(si => ({ ...si, meta: itemMeta(si) })),
+    items: saleItems.value.map(si => ({ ...si, ...itemMetaFields(si) })),
   }]
   if (salePackages.value.length) {
     groups.push({
@@ -754,14 +762,16 @@ function stockTitle(line) {
   return `${t('erp.orders.availableStock')}: ${max}`
 }
 
-// Price (best for the chosen customer) + on-hand, shown in the item picker.
-function itemMeta(si) {
+// Price (best for the chosen customer) + on-hand, as separate picker columns.
+// Price shows 0.00 when no pricing is configured; stock is "—" for non-stock
+// items (services).
+function itemMetaFields(si) {
   const customer = customers.value.find(c => c.id === form.value.customerId)
   const pricing = getBestPricing(si, customer?.customerGroupId)
-  const parts = []
-  if (pricing) parts.push(fmtMoney(Number(pricing.unitPrice)))
-  if (si.product) parts.push(`${t('erp.orders.stock')}: ${Number(si.product.stock) || 0}`)
-  return parts.join('  ·  ')
+  return {
+    priceLabel: fmtMoney(Number(pricing?.unitPrice) || 0),
+    stockLabel: si.product ? String(Number(si.product.stock) || 0) : '—',
+  }
 }
 
 
