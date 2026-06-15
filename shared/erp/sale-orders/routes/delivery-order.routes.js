@@ -17,6 +17,7 @@ router.post('/:id/ship',     requirePermission('erp.orders.edit'),   controller.
 router.post('/:id/deliver',  requirePermission('erp.orders.edit'),   controller.deliver)
 router.post('/:id/cancel',   requirePermission('erp.orders.edit'),   controller.cancel)
 router.post('/:id/create-invoice', requirePermission('erp.invoices.edit'), controller.createInvoice)
+router.post('/:id/create-receipt', requirePermission('erp.receipts.edit'), controller.createReceipt)
 router.delete('/:id',        requirePermission('erp.orders.delete'), controller.remove)
 
 module.exports = { mountPath: '/delivery-orders', router }

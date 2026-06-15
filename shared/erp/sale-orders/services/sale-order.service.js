@@ -123,7 +123,7 @@ const create = async ({
   customerId, orderDate, notes, items = [], currency, exchangeRate,
   referenceNumber, expectedDeliveryDate, paymentTerms, salespersonId,
   shippingAddress, billingAddress,
-  discountType, discountValue,
+  discountType, discountValue, saleType,
   userId, organizationId,
 }) => {
   if (!items.length) throw { status: 400, message: 'Order must have at least one item' }
@@ -132,6 +132,10 @@ const create = async ({
   const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType, discountValue })
   const fx = await require('../../settings/services/currency.service').getRateOn(currency, orderDate, organizationId)
   const resolvedRate = exchangeRate != null && Number(exchangeRate) > 0 ? Number(exchangeRate) : fx
+  // Fall back to the org/user-configured default (ERP Settings → Sale Orders).
+  const resolvedSaleType = saleType === 'cash' || saleType === 'credit'
+    ? saleType
+    : await require('../../settings/services/general.service').getDefaultSaleType(userId)
 
   let createdId
   await sequelize.transaction(async (t) => {
@@ -139,6 +143,7 @@ const create = async ({
       {
         orderNumber, customerId: customerId || null, orderDate: orderDate || new Date(),
         notes, subtotal, tax, total,
+        saleType: resolvedSaleType,
         currency: currency || null, exchangeRate: resolvedRate,
         referenceNumber:      referenceNumber || null,
         expectedDeliveryDate: expectedDeliveryDate || null,
@@ -298,7 +303,7 @@ const update = async (id, payload, userId, organizationId) => {
     customerId, orderDate, notes, currency, exchangeRate, items,
     referenceNumber, expectedDeliveryDate, paymentTerms, salespersonId,
     shippingAddress, billingAddress,
-    discountType, discountValue,
+    discountType, discountValue, saleType,
   } = payload || {}
 
   const order = await findByPkScoped(Order, id, organizationId)
@@ -319,6 +324,7 @@ const update = async (id, payload, userId, organizationId) => {
   if (salespersonId        !== undefined) headerExtras.salespersonId        = salespersonId        || null
   if (shippingAddress      !== undefined) headerExtras.shippingAddress      = shippingAddress      || null
   if (billingAddress       !== undefined) headerExtras.billingAddress       = billingAddress       || null
+  if (saleType === 'cash' || saleType === 'credit') headerExtras.saleType   = saleType
 
   await sequelize.transaction(async (t) => {
     if (items) {

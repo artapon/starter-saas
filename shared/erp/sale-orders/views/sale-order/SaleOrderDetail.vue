@@ -20,6 +20,11 @@
               <span class="w-1.5 h-1.5" :class="statusDot(order.status)"></span>
               {{ order.status }}
             </span>
+            <span v-if="order && !loading"
+              class="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold"
+              :class="order.saleType === 'cash' ? 'bg-emerald-50 text-emerald-700' : 'bg-indigo-50 text-indigo-700'">
+              {{ order.saleType === 'cash' ? t('erp.orders.saleTypeCash') : t('erp.orders.saleTypeCredit') }}
+            </span>
             <DocCurrencyBadge v-if="order" :currency="order.currency" :exchange-rate="order.exchangeRate" :total="order.total" />
           </div>
           <nav class="flex items-center gap-1.5 mt-1">
@@ -147,18 +152,10 @@
             → {{ order.linkedDeliveryOrder.refNo }}
           </RouterLink>
 
-          <button v-can="'erp.invoices.edit'" @click="convertToInvoice"
-            :disabled="converting || !!order.linkedInvoice"
-            :title="order.linkedInvoice ? `Already linked to ${order.linkedInvoice.invoiceNumber}` : ''"
-            class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-50 text-primary-600 border border-primary-200
-                   hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            <DocumentTextIcon class="w-4 h-4" />
-            {{ converting === 'inv' ? t('erp.common.saving') : t('erp.orders.createInvoice') }}
-          </button>
-          <RouterLink v-if="order.linkedInvoice" :to="`/erp/invoices/${order.linkedInvoice.id}`"
-            class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
-            → {{ order.linkedInvoice.invoiceNumber }}
-          </RouterLink>
+          <!-- Cash → Receipt, Credit → Invoice happen on the Delivery Order. -->
+          <span class="self-center text-xs text-[#9BA7B0]">
+            {{ order.saleType === 'cash' ? t('erp.orders.cashNextHint') : t('erp.orders.creditNextHint') }}
+          </span>
 
           <span v-if="convertError" class="self-center text-xs text-red-600">{{ convertError }}</span>
         </div>
@@ -206,7 +203,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import DocCurrencyBadge from '@/components/DocCurrencyBadge.vue'
 import {
-  ArrowLeftIcon, ChevronRightIcon, DocumentTextIcon,
+  ArrowLeftIcon, ChevronRightIcon,
   CheckIcon, XMarkIcon, TrashIcon, PencilSquareIcon,
   ArrowPathIcon, ExclamationCircleIcon, TruckIcon, PrinterIcon,
 } from '@heroicons/vue/24/outline'
@@ -266,17 +263,6 @@ async function convertToDeliveryOrder() {
     router.push(`/erp/delivery-orders/${data.data.id}`)
   } catch (err) {
     convertError.value = err.response?.data?.message || 'Failed to create delivery order'
-  } finally { converting.value = '' }
-}
-
-async function convertToInvoice() {
-  convertError.value = ''
-  converting.value = 'inv'
-  try {
-    const { data } = await api.post(`/erp/sale-orders/${order.value.id}/create-invoice`)
-    router.push(`/erp/invoices/${data.data.id}`)
-  } catch (err) {
-    convertError.value = err.response?.data?.message || 'Failed to create invoice'
   } finally { converting.value = '' }
 }
 

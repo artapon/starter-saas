@@ -102,6 +102,21 @@
               </SearchSelect>
             </div>
 
+            <!-- Sale type: cash → Receipt, credit → Invoice -->
+            <div>
+              <FieldLabel :text="t('erp.orders.saleType')" required />
+              <div class="flex gap-2">
+                <button v-for="opt in SALE_TYPE_OPTIONS" :key="opt.value" type="button"
+                  @click="form.saleType = opt.value"
+                  :class="['flex-1 px-3 py-2.5 text-[13px] font-semibold border transition-colors',
+                    form.saleType === opt.value
+                      ? 'bg-primary-50 border-primary-300 text-primary-700'
+                      : 'bg-white border-[#E2E8F0] text-[#637381] hover:bg-slate-50']">
+                  {{ opt.label }}
+                </button>
+              </div>
+            </div>
+
           </div>
         </FormCard>
 
@@ -590,7 +605,15 @@ const form  = ref({
   referenceNumber: '', expectedDeliveryDate: '', paymentTerms: '', salespersonId: '',
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
+  // Cash = SO → DO → Receipt | Credit = SO → DO → Invoice. Defaults from
+  // ERP Settings → Sale Orders.
+  saleType: settings.saleOrders?.defaultSaleType || 'credit',
 })
+
+const SALE_TYPE_OPTIONS = computed(() => [
+  { value: 'cash',   label: t('erp.orders.saleTypeCash') },
+  { value: 'credit', label: t('erp.orders.saleTypeCredit') },
+])
 const billingSameAsShipping = ref(true)
 
 // Once a draft has been saved-without-redirect we have an order id, so further

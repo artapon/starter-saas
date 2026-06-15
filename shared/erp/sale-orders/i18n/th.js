@@ -53,6 +53,13 @@ export default {
       createDeliveryOrder: 'สร้างใบส่งสินค้า',
       createInvoice:       'สร้างใบแจ้งหนี้',
 
+      // ── ประเภทการขาย (เงินสด / เครดิต) ─────────────────────
+      saleType:        'ประเภทการขาย',
+      saleTypeCash:    'เงินสด',
+      saleTypeCredit:  'เครดิต',
+      cashNextHint:    'ขายเงินสด — ออกใบเสร็จจากใบส่งสินค้า',
+      creditNextHint:  'ขายเครดิต — ออกใบแจ้งหนี้จากใบส่งสินค้า',
+
       referenceNumber:   'เลขที่อ้างอิง / PO',
       expectedDelivery:  'วันที่ส่งที่คาดหวัง',
       paymentTerms:      'เงื่อนไขการชำระเงิน',
@@ -160,6 +167,7 @@ export default {
       customerRequired: 'กรุณาเลือกลูกค้า',
       dateRequired:     'กรุณาระบุวันที่',
       createInvoice:    'สร้างใบแจ้งหนี้',
+      createReceipt:    'สร้างใบเสร็จ',
 
       // ── Sales-order parity ─────────────────────────────────
       referenceNumber:   'เลขที่อ้างอิง / PO',

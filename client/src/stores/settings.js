@@ -29,12 +29,17 @@ const AUDIT_DEFAULTS = {
   debug: false,
 }
 
+const SALE_ORDERS_DEFAULTS = {
+  defaultSaleType: 'credit',  // 'cash' = SO → DO → Receipt | 'credit' = SO → DO → Invoice
+}
+
 export const useSettingsStore = defineStore('settings', () => {
   const general  = ref({ ...GENERAL_DEFAULTS })
   const currency = ref({ ...CURRENCY_DEFAULTS })
   const tax      = ref({ ...TAX_DEFAULTS })
   const calendar = ref({ ...CALENDAR_DEFAULTS })
   const audit    = ref({ ...AUDIT_DEFAULTS })
+  const saleOrders = ref({ ...SALE_ORDERS_DEFAULTS })
 
   async function load() {
     try {
@@ -53,6 +58,9 @@ export const useSettingsStore = defineStore('settings', () => {
       }
       if (data?.data?.audit) {
         audit.value = { ...AUDIT_DEFAULTS, ...data.data.audit }
+      }
+      if (data?.data?.saleOrders) {
+        saleOrders.value = { ...SALE_ORDERS_DEFAULTS, ...data.data.saleOrders }
       }
     } catch {
       // fall back to defaults
@@ -90,5 +98,10 @@ export const useSettingsStore = defineStore('settings', () => {
     if (data?.data?.tax)      tax.value      = { ...TAX_DEFAULTS,      ...data.data.tax }
   }
 
-  return { general, currency, tax, calendar, audit, load, saveGeneral, saveCurrency, saveTax, saveCalendar, saveAudit, saveAll }
+  async function saveSaleOrders(config) {
+    const { data } = await api.put('/erp/settings/general', { saleOrders: config })
+    saleOrders.value = { ...SALE_ORDERS_DEFAULTS, ...data.data.saleOrders }
+  }
+
+  return { general, currency, tax, calendar, audit, saleOrders, load, saveGeneral, saveCurrency, saveTax, saveCalendar, saveAudit, saveSaleOrders, saveAll }
 })

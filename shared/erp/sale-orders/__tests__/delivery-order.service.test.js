@@ -17,18 +17,21 @@ jest.mock('../../../../server/models', () => ({
   Store:             {},
   User:              {},
   Invoice:           { findOne: jest.fn() },
+  Receipt:           { findOne: jest.fn() },
   SalesOrderItem:    { findAll: jest.fn() },
 }))
 
 jest.mock('../../../../server/config/database', () => ({ transaction: jest.fn() }))
 jest.mock('../../audit/audit.service', () => ({ log: jest.fn() }))
 jest.mock('../../settings/services/sequence.service', () => ({ getNext: jest.fn(() => 'DO-1') }), { virtual: true })
-jest.mock('../../invoices/invoice.service', () => ({ create: jest.fn() }), { virtual: true })
+jest.mock('../../invoices/invoice.service', () => ({ create: jest.fn(), updateStatus: jest.fn() }), { virtual: true })
+jest.mock('../../receipts/receipt.service', () => ({ create: jest.fn(), updateStatus: jest.fn() }), { virtual: true })
 
 const { Op } = require('sequelize')
-const { DeliveryOrder, Invoice, SalesOrderItem } = require('../../../../server/models')
+const { DeliveryOrder, Invoice, Receipt, SalesOrderItem } = require('../../../../server/models')
 const audit = require('../../audit/audit.service')
 const invoiceSvc = require('../../invoices/invoice.service')
+const receiptSvc = require('../../receipts/receipt.service')
 const service = require('../services/delivery-order.service')
 
 describe('delivery-order.list', () => {
@@ -224,5 +227,43 @@ describe('delivery-order.createInvoice', () => {
     await service.createInvoice('d1', 'u', 'org')
     const payload = invoiceSvc.create.mock.calls[0][0]
     expect(payload.items[0].unitPrice).toBe(0) // priceMap is empty
+  })
+})
+
+describe('delivery-order.createReceipt (cash sale)', () => {
+  test('refuses when a receipt already exists, naming it in the error', async () => {
+    DeliveryOrder.findOne.mockResolvedValue({
+      id: 'd1', status: 'shipped', items: [],
+      toJSON() { return { id: 'd1', status: 'shipped', refNo: 'DO-1', items: [] } },
+    })
+    Invoice.findOne.mockResolvedValueOnce({ id: 'inv', invoiceNumber: 'INV-7', status: 'paid' }) // getById join
+    Receipt.findOne.mockResolvedValueOnce({ id: 'rec', receiptNumber: 'REC-3', status: 'confirmed' })
+    await expect(service.createReceipt('d1', 'u', 'o'))
+      .rejects.toMatchObject({ status: 400, message: expect.stringContaining('REC-3 already exists') })
+    expect(invoiceSvc.create).not.toHaveBeenCalled()
+  })
+
+  test('happy path: builds invoice, marks it sent, then creates + confirms the receipt', async () => {
+    DeliveryOrder.findOne.mockResolvedValue({
+      id: 'd1', status: 'shipped', customerId: 'c', orderId: null,
+      items: [{ productId: 'p-1', productName: 'A', qty: 2 }],
+      toJSON() {
+        return { id: 'd1', status: 'shipped', customerId: 'c', refNo: 'DO-1', items: this.items }
+      },
+    })
+    Invoice.findOne.mockResolvedValue(null)   // no linked invoice + no existing guard hit
+    Receipt.findOne.mockResolvedValue(null)   // no linked receipt
+    invoiceSvc.create.mockResolvedValue({ id: 'inv-new', total: 200, customerId: 'c', currency: null, exchangeRate: 1 })
+    receiptSvc.create.mockResolvedValue({ id: 'rec-new' })
+
+    const out = await service.createReceipt('d1', 'u', 'org')
+    expect(out).toEqual({ id: 'rec-new' })
+    // Revenue recognised before payment is applied.
+    expect(invoiceSvc.updateStatus).toHaveBeenCalledWith('inv-new', 'sent', 'u', 'org')
+    const recPayload = receiptSvc.create.mock.calls[0][0]
+    expect(recPayload.invoiceId).toBe('inv-new')
+    expect(recPayload.amount).toBe(200)
+    expect(recPayload.paymentMethod).toBe('cash')
+    expect(receiptSvc.updateStatus).toHaveBeenCalledWith('rec-new', 'confirmed', 'u', 'org')
   })
 })

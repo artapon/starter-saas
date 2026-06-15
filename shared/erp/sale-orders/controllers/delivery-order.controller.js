@@ -90,4 +90,15 @@ const createInvoice = async (req, res, next) => {
   }
 }
 
-module.exports = { list, getById, create, update, confirm, ship, deliver, cancel, remove, createInvoice }
+const createReceipt = async (req, res, next) => {
+  try {
+    const userId = req.user?.id
+    const organizationId = req.user?.organizationId || req.user?.id
+    res.status(201).json({ data: await svc.createReceipt(req.params.id, userId, organizationId) })
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message })
+    next(err)
+  }
+}
+
+module.exports = { list, getById, create, update, confirm, ship, deliver, cancel, remove, createInvoice, createReceipt }

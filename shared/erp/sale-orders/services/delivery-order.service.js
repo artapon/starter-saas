@@ -8,7 +8,7 @@ const { getNext } = require('../../settings/services/sequence.service')
 const { findByPkScoped } = require('../../../../server/core/tenant')
 
 const customerAttrs = ['id', 'name', 'company', 'email', 'phone', 'address']
-const orderAttrs    = ['id', 'orderNumber', 'orderDate', 'status']
+const orderAttrs    = ['id', 'orderNumber', 'orderDate', 'status', 'saleType']
 const productAttrs  = ['id', 'name', 'sku']
 
 const itemInclude = {
@@ -58,13 +58,23 @@ const getById = async (id, organizationId) => {
   })
   if (!doc) throw { status: 404, message: 'Delivery Order not found' }
 
-  const { Invoice } = require('../../../../server/models')
+  const { Invoice, Receipt } = require('../../../../server/models')
   const linkedInv = await Invoice.findOne({
     where: { deliveryOrderId: id, dataFlag: { [Op.ne]: 2 } },
     attributes: ['id', 'invoiceNumber', 'status'],
   })
+  // Receipts link to an invoice, not directly to the DO. For a cash sale the
+  // DO's backing invoice carries the receipt, so resolve it through that.
+  let linkedRec = null
+  if (linkedInv) {
+    linkedRec = await Receipt.findOne({
+      where: { invoiceId: linkedInv.id, dataFlag: { [Op.ne]: 2 } },
+      attributes: ['id', 'receiptNumber', 'status'],
+    })
+  }
   const json = doc.toJSON()
   json.linkedInvoice = linkedInv
+  json.linkedReceipt = linkedRec
   return json
 }
 
@@ -263,8 +273,10 @@ const remove = async (id, organizationId) => {
   await doc.destroy()
 }
 
-const createInvoice = async (id, userId, organizationId) => {
-  const doc = await getById(id, organizationId)
+// Build the backing Invoice for a (shipped/delivered) Delivery Order. Shared by
+// both createInvoice (credit sales) and createReceipt (cash sales). Throws if
+// the DO isn't invoiceable or already has an invoice.
+const buildInvoiceFromDO = async (doc, userId, organizationId) => {
   if (!['shipped', 'delivered'].includes(doc.status)) {
     throw { status: 400, message: 'Only shipped or delivered orders can be invoiced' }
   }
@@ -288,7 +300,7 @@ const createInvoice = async (id, userId, organizationId) => {
   }
 
   const invoiceSvc = require('../../invoices/invoice.service')
-  const invoice = await invoiceSvc.create({
+  return invoiceSvc.create({
     customerId:      doc.customerId,
     orderId:         doc.orderId || null,
     deliveryOrderId: doc.id,
@@ -307,7 +319,44 @@ const createInvoice = async (id, userId, organizationId) => {
     userId,
     organizationId,
   })
+}
+
+const createInvoice = async (id, userId, organizationId) => {
+  const doc = await getById(id, organizationId)
+  const invoice = await buildInvoiceFromDO(doc, userId, organizationId)
   return { id: invoice.id }
 }
 
-module.exports = { list, getById, create, update, confirm, ship, deliver, cancel, remove, createInvoice }
+// Cash-sale path: create the backing Invoice, mark it "sent" (which posts the
+// revenue + COGS journals), then create a Receipt against it and confirm it
+// (which posts the payment journal and marks the invoice "paid"). The Receipt is
+// the customer-facing document; the invoice backs it for complete accounting.
+const createReceipt = async (id, userId, organizationId) => {
+  const doc = await getById(id, organizationId)
+  if (doc.linkedReceipt) {
+    throw { status: 400, message: `Receipt ${doc.linkedReceipt.receiptNumber} already exists for this delivery order. Cancel it first to create a new one.` }
+  }
+  const invoiceSvc = require('../../invoices/invoice.service')
+  const invoice = await buildInvoiceFromDO(doc, userId, organizationId)
+  // Recognise revenue before applying the payment — draft → paid would skip it.
+  await invoiceSvc.updateStatus(invoice.id, 'sent', userId, organizationId)
+
+  const receiptSvc = require('../../receipts/receipt.service')
+  const receipt = await receiptSvc.create({
+    customerId:    invoice.customerId || doc.customerId || null,
+    invoiceId:     invoice.id,
+    receiptDate:   new Date(),
+    paymentMethod: 'cash',
+    amount:        Number(invoice.total) || 0,
+    reference:     doc.refNo,
+    notes:         `Auto-created from Delivery Order ${doc.refNo}`,
+    currency:      invoice.currency,
+    exchangeRate:  invoice.exchangeRate,
+    userId,
+    organizationId,
+  })
+  await receiptSvc.updateStatus(receipt.id, 'confirmed', userId, organizationId)
+  return { id: receipt.id }
+}
+
+module.exports = { list, getById, create, update, confirm, ship, deliver, cancel, remove, createInvoice, createReceipt }

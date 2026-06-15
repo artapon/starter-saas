@@ -414,6 +414,64 @@
 
       </template>
 
+      <!-- ── Sale Orders tab ──────────────────────────────────────────── -->
+      <template v-if="activeTab === 'saleOrders'">
+
+        <div class="bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-[#E2E8F0]">
+            <h2 class="text-sm font-semibold text-[#374151]">{{ t('erp.settings.saleOrders') }}</h2>
+            <p class="text-xs text-[#9BA7B0] mt-0.5">{{ t('erp.settings.saleOrdersDesc') }}</p>
+          </div>
+
+          <div class="px-6 py-5">
+            <div class="max-w-sm">
+              <label class="block text-xs font-semibold text-[#637381] uppercase tracking-wide mb-1.5">
+                {{ t('erp.settings.defaultSaleType') }}
+              </label>
+              <div class="flex border border-[#E2E8F0] overflow-hidden text-sm">
+                <button type="button" @click="saleOrdersForm.defaultSaleType = 'cash'"
+                  :class="saleOrdersForm.defaultSaleType === 'cash'
+                    ? 'flex-1 py-2.5 bg-primary-500 text-white font-medium'
+                    : 'flex-1 py-2.5 bg-white text-[#637381] hover:bg-[#F7F9FC]'">
+                  {{ t('erp.settings.saleTypeCash') }}
+                </button>
+                <button type="button" @click="saleOrdersForm.defaultSaleType = 'credit'"
+                  :class="saleOrdersForm.defaultSaleType === 'credit'
+                    ? 'flex-1 py-2.5 bg-primary-500 text-white font-medium'
+                    : 'flex-1 py-2.5 bg-white text-[#637381] hover:bg-[#F7F9FC]'">
+                  {{ t('erp.settings.saleTypeCredit') }}
+                </button>
+              </div>
+              <p class="mt-1.5 text-xs text-[#9BA7B0]">
+                {{ saleOrdersForm.defaultSaleType === 'cash' ? t('erp.settings.saleTypeCashDesc') : t('erp.settings.saleTypeCreditDesc') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback + save -->
+        <div v-if="saleOrdersError"
+          class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+          <ExclamationCircleIcon class="w-4 h-4 flex-shrink-0" />
+          {{ saleOrdersError }}
+        </div>
+        <div v-if="saleOrdersSaved"
+          class="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3">
+          <CheckCircleIcon class="w-4 h-4 flex-shrink-0" />
+          {{ t('erp.settings.savedOk') }}
+        </div>
+        <div class="flex justify-end">
+          <button @click="saveSaleOrders" :disabled="saleOrdersSaving"
+            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold
+                   bg-primary-500 text-white hover:bg-primary-700
+                   disabled:opacity-50 transition-colors shadow-sm">
+            <CheckIcon v-if="!saleOrdersSaving" class="w-4 h-4" />
+            {{ saleOrdersSaving ? t('erp.common.saving') : t('erp.settings.saveSettings') }}
+          </button>
+        </div>
+
+      </template>
+
     </div>
   </AppLayout>
 </template>
@@ -436,8 +494,9 @@ const TABS = computed(() => [
   { key: 'general',  label: t('erp.settings.tabGeneral') },
   { key: 'currency', label: t('erp.settings.currency') },
   { key: 'tax',      label: t('erp.settings.tax') },
-  { key: 'date',     label: t('erp.settings.tabDate') },
-  { key: 'auditlog', label: t('erp.settings.tabAuditLog') },
+  { key: 'date',       label: t('erp.settings.tabDate') },
+  { key: 'saleOrders', label: t('erp.settings.saleOrders') },
+  { key: 'auditlog',   label: t('erp.settings.tabAuditLog') },
 ])
 
 // ── General form ──────────────────────────────────────────
@@ -611,6 +670,29 @@ async function saveAudit() {
   }
 }
 
+// ── Sale Orders form ──────────────────────────────────────
+const saleOrdersForm = reactive({
+  defaultSaleType: store.saleOrders.defaultSaleType,
+})
+const saleOrdersSaving = ref(false)
+const saleOrdersSaved  = ref(false)
+const saleOrdersError  = ref('')
+
+async function saveSaleOrders() {
+  saleOrdersError.value = ''
+  saleOrdersSaved.value = false
+  saleOrdersSaving.value = true
+  try {
+    await store.saveSaleOrders({ ...saleOrdersForm })
+    saleOrdersSaved.value = true
+    setTimeout(() => { saleOrdersSaved.value = false }, 3000)
+  } catch (err) {
+    saleOrdersError.value = err.response?.data?.message || 'Failed to save sale order settings'
+  } finally {
+    saleOrdersSaving.value = false
+  }
+}
+
 // ── Load ──────────────────────────────────────────────────
 onMounted(async () => {
   await store.load()
@@ -622,5 +704,6 @@ onMounted(async () => {
     dateFormat: store.calendar.dateFormat || 'dd/mm/yyyy',
   })
   Object.assign(auditForm, store.audit)
+  Object.assign(saleOrdersForm, store.saleOrders)
 })
 </script>

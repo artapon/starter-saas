@@ -117,25 +117,46 @@
         </div>
         <p v-if="statusError" class="text-xs text-red-600 print:hidden">{{ statusError }}</p>
 
-        <!-- Convert to Invoice -->
+        <!-- Convert: cash sale → Receipt, credit sale → Invoice -->
         <div v-if="['shipped', 'delivered'].includes(doc.status)"
           class="bg-white border border-[#E2E8F0] shadow-card px-5 py-4 print:hidden
                  flex items-center flex-wrap gap-3">
           <p class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider mr-2">
             {{ t('erp.deliveryOrders.convertActions') }}
           </p>
-          <button v-can="'erp.invoices.edit'" @click="convertToInvoice"
-            :disabled="converting || !!doc.linkedInvoice"
-            :title="doc.linkedInvoice ? `Already linked to ${doc.linkedInvoice.invoiceNumber}` : ''"
-            class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-50 text-primary-600 border border-primary-200
-                   hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            <DocumentTextIcon class="w-4 h-4" />
-            {{ converting ? t('erp.common.saving') : t('erp.deliveryOrders.createInvoice') }}
-          </button>
-          <RouterLink v-if="doc.linkedInvoice" :to="`/erp/invoices/${doc.linkedInvoice.id}`"
-            class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
-            → {{ doc.linkedInvoice.invoiceNumber }}
-          </RouterLink>
+
+          <!-- Credit sale → Invoice -->
+          <template v-if="saleType !== 'cash'">
+            <button v-can="'erp.invoices.edit'" @click="convertToInvoice"
+              :disabled="converting || !!doc.linkedInvoice"
+              :title="doc.linkedInvoice ? `Already linked to ${doc.linkedInvoice.invoiceNumber}` : ''"
+              class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-50 text-primary-600 border border-primary-200
+                     hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <DocumentTextIcon class="w-4 h-4" />
+              {{ converting ? t('erp.common.saving') : t('erp.deliveryOrders.createInvoice') }}
+            </button>
+            <RouterLink v-if="doc.linkedInvoice" :to="`/erp/invoices/${doc.linkedInvoice.id}`"
+              class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
+              → {{ doc.linkedInvoice.invoiceNumber }}
+            </RouterLink>
+          </template>
+
+          <!-- Cash sale → Receipt -->
+          <template v-else>
+            <button v-can="'erp.receipts.edit'" @click="convertToReceipt"
+              :disabled="converting || !!doc.linkedReceipt"
+              :title="doc.linkedReceipt ? `Already linked to ${doc.linkedReceipt.receiptNumber}` : ''"
+              class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-50 text-primary-600 border border-primary-200
+                     hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <BanknotesIcon class="w-4 h-4" />
+              {{ converting ? t('erp.common.saving') : t('erp.deliveryOrders.createReceipt') }}
+            </button>
+            <RouterLink v-if="doc.linkedReceipt" :to="`/erp/receipts/${doc.linkedReceipt.id}`"
+              class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
+              → {{ doc.linkedReceipt.receiptNumber }}
+            </RouterLink>
+          </template>
+
           <span v-if="convertError" class="self-center text-xs text-red-600">{{ convertError }}</span>
         </div>
 
@@ -151,7 +172,7 @@ import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  ArrowLeftIcon, ChevronRightIcon, DocumentTextIcon,
+  ArrowLeftIcon, ChevronRightIcon, DocumentTextIcon, BanknotesIcon,
   CheckIcon, XMarkIcon, TrashIcon, PencilSquareIcon,
   ArrowPathIcon, ExclamationCircleIcon, PrinterIcon,
 } from '@heroicons/vue/24/outline'
@@ -182,6 +203,9 @@ const { shortcuts } = useDetailShortcuts({
 
 function onPrint() { window.print() }
 
+// Drives which downstream document the DO offers (set on the source Sales Order).
+const saleType = computed(() => doc.value?.salesOrder?.saleType || 'credit')
+
 async function convertToInvoice() {
   convertError.value = ''
   converting.value = true
@@ -190,6 +214,17 @@ async function convertToInvoice() {
     router.push(`/erp/invoices/${data.data.id}`)
   } catch (err) {
     convertError.value = err.response?.data?.message || 'Failed to create invoice'
+  } finally { converting.value = false }
+}
+
+async function convertToReceipt() {
+  convertError.value = ''
+  converting.value = true
+  try {
+    const { data } = await api.post(`/erp/delivery-orders/${doc.value.id}/create-receipt`)
+    router.push(`/erp/receipts/${data.data.id}`)
+  } catch (err) {
+    convertError.value = err.response?.data?.message || 'Failed to create receipt'
   } finally { converting.value = false }
 }
 

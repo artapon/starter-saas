@@ -53,6 +53,13 @@ export default {
       createDeliveryOrder: 'Create Delivery Order',
       createInvoice:       'Create Invoice',
 
+      // ── Sale type (cash vs credit) ─────────────────────────
+      saleType:        'Sale Type',
+      saleTypeCash:    'Cash',
+      saleTypeCredit:  'Credit',
+      cashNextHint:    'Cash sale — issue a Receipt from the Delivery Order.',
+      creditNextHint:  'Credit sale — issue an Invoice from the Delivery Order.',
+
       referenceNumber:   'Reference / PO #',
       expectedDelivery:  'Expected Delivery',
       paymentTerms:      'Payment Terms',
@@ -160,6 +167,7 @@ export default {
       customerRequired: 'Customer is required',
       dateRequired:     'Date is required',
       createInvoice:    'Create Invoice',
+      createReceipt:    'Create Receipt',
 
       // ── Sales-order parity ─────────────────────────────────
       referenceNumber:   'Reference / PO #',

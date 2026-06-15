@@ -24,6 +24,12 @@ const Order = sequelize.define('Order', {
     defaultValue: 'draft',
     comment: 'Status (สถานะ)',
   },
+  saleType: {
+    type: DataTypes.ENUM('cash', 'credit'),
+    allowNull: false,
+    defaultValue: 'credit',
+    comment: 'Sale Type (ประเภทการขาย)',
+  },
   orderDate: {
     type: DataTypes.DATEONLY,
     allowNull: false,

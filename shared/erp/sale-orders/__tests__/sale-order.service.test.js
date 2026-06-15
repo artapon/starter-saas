@@ -34,7 +34,7 @@ const { Op } = require('sequelize')
 const { Order, SalesOrderItem, Invoice, DeliveryOrder } = require('../../../../server/models')
 const audit = require('../../audit/audit.service')
 const invoiceSvc = require('../../invoices/invoice.service')
-const service = require('../services/order.service')
+const service = require('../services/sale-order.service')
 
 describe('order.list', () => {
   beforeEach(() => {

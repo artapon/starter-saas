@@ -23,6 +23,7 @@ const ENTITY_MAP = {
   'item-master':                     'Product',
   'product-categories':              'ProductCategory',
   'orders':                          'Order',
+  'sale-orders':                     'Order',
   'delivery-orders':                 'DeliveryOrder',
   'quotations':                      'Quotation',
   'invoices':                        'Invoice',

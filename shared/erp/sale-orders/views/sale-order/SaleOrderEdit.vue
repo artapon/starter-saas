@@ -109,6 +109,21 @@
               </SearchSelect>
             </div>
 
+            <!-- Sale type: cash → Receipt, credit → Invoice -->
+            <div>
+              <FieldLabel :text="t('erp.orders.saleType')" required />
+              <div class="flex gap-2">
+                <button v-for="opt in SALE_TYPE_OPTIONS" :key="opt.value" type="button"
+                  @click="form.saleType = opt.value"
+                  :class="['flex-1 px-3 py-2.5 text-[13px] font-semibold border transition-colors',
+                    form.saleType === opt.value
+                      ? 'bg-primary-50 border-primary-300 text-primary-700'
+                      : 'bg-white border-[#E2E8F0] text-[#637381] hover:bg-slate-50']">
+                  {{ opt.label }}
+                </button>
+              </div>
+            </div>
+
           </div>
         </FormCard>
 
@@ -599,7 +614,13 @@ const form = ref({
   referenceNumber: '', expectedDeliveryDate: '', paymentTerms: '', salespersonId: '',
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
+  saleType: 'credit',
 })
+
+const SALE_TYPE_OPTIONS = computed(() => [
+  { value: 'cash',   label: t('erp.orders.saleTypeCash') },
+  { value: 'credit', label: t('erp.orders.saleTypeCredit') },
+])
 
 // Dirty tracking: warn on tab close / Discard click after the user changes
 // anything. We arm the watcher once the existing order has loaded so the
@@ -715,6 +736,7 @@ onMounted(async () => {
     billingAddress:       o.billingAddress       || '',
     discountType:         o.discountType         || '',
     discountValue:        Number(o.discountValue) || 0,
+    saleType:             o.saleType === 'cash' ? 'cash' : 'credit',
     items: (o.items || []).map(it => {
       const si = saleItems.value.find(s => s.id === it.saleItemId)
       const hasProduct = !!(it.productId || si?.productId)
@@ -1165,6 +1187,7 @@ async function save({ redirect = true } = {}) {
       billingAddress:       form.value.billingAddress       || null,
       discountType:         form.value.discountType         || null,
       discountValue:        Number(form.value.discountValue) || 0,
+      saleType:             form.value.saleType,
       items: form.value.items.map(({ key, parentKey, salePackageId, saleItemId, storeId, productName, quantity, unitPrice, taxRate }) => ({
         key, parentKey: parentKey || '',
         salePackageId: salePackageId || null,
