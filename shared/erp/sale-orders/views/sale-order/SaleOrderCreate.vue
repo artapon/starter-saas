@@ -348,6 +348,7 @@
             :options="groupedItemOptions"
             group-values="items"
             group-label="label"
+            meta-key="meta"
             multiple
             hide-trigger
             search-placeholder="Search by code or name…"
