@@ -60,12 +60,15 @@ const getById = async (id, organizationId) => {
 // as its own line in the summary — matches the "10% off your order" pattern.
 const computeTotals = (items, { discountType, discountValue } = {}) => {
   const lines = items.map((i) => {
-    const qty   = Number(i.quantity)  || 0
-    const price = Number(i.unitPrice) || 0
-    const rate  = Number(i.taxRate)   || 0
-    const lineSubtotal = qty * price
-    const taxAmount    = toFixed(lineSubtotal * (rate / 100), 2)
-    return { ...i, taxRate: rate, taxAmount, total: toFixed(lineSubtotal + taxAmount, 2), lineSubtotal: toFixed(lineSubtotal, 2) }
+    const qty      = Number(i.quantity)      || 0
+    const price    = Number(i.unitPrice)     || 0
+    const rate     = Number(i.taxRate)       || 0
+    const discPct  = Number(i.discountValue) || 0
+    const lineGross          = qty * price
+    const lineDiscountAmount = toFixed(lineGross * (discPct / 100), 2)
+    const lineSubtotal       = toFixed(lineGross - Number(lineDiscountAmount), 2)
+    const taxAmount          = toFixed(Number(lineSubtotal) * (rate / 100), 2)
+    return { ...i, taxRate: rate, discountValue: discPct, discountAmount: lineDiscountAmount, taxAmount, total: toFixed(Number(lineSubtotal) + Number(taxAmount), 2), lineSubtotal }
   })
   const subtotal = lines.reduce((s, l) => s + Number(l.lineSubtotal), 0)
   const tax      = lines.reduce((s, l) => s + Number(l.taxAmount), 0)
@@ -110,6 +113,8 @@ const persistOrderItems = async ({ orderId, lines, organizationId, t }) => {
         unitPrice:      item.unitPrice,
         taxRate:        item.taxRate,
         taxAmount:      item.taxAmount,
+        discountValue:  item.discountValue  || 0,
+        discountAmount: item.discountAmount || 0,
         total:          item.total,
         organizationId: organizationId || null,
       },
@@ -407,14 +412,19 @@ const getItemById = async (id, organizationId) => {
 
 const recalcOrderTotals = async (orderId, t) => {
   const items = await SalesOrderItem.findAll({ where: { orderId }, transaction: t })
-  const subtotal = items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0)
-  const tax      = items.reduce((sum, i) => sum + Number(i.taxAmount || 0), 0)
-  const total    = subtotal + tax
+  const subtotal = items.reduce((sum, i) => {
+    const gross = (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0)
+    const disc  = gross * ((Number(i.discountValue) || 0) / 100)
+    return sum + gross - disc
+  }, 0)
+  const tax   = items.reduce((sum, i) => sum + Number(i.taxAmount || 0), 0)
   const order = await Order.findByPk(orderId, { transaction: t })
+  const disc  = Number(order.discountAmount) || 0
+  const total = subtotal + tax - disc
   await order.update({ subtotal: toFixed(subtotal, 2), tax: toFixed(tax, 2), total: toFixed(total, 2) }, { transaction: t })
 }
 
-const updateItem = async (id, { productId, productName, quantity, unitPrice, taxRate }, organizationId) => {
+const updateItem = async (id, { productId, productName, quantity, unitPrice, taxRate, discountValue }, organizationId) => {
   const item = await findByPkScoped(SalesOrderItem, id, organizationId, {
     include: [{ model: Order, as: 'order', attributes: ['id', 'status'] }],
   })
@@ -430,12 +440,15 @@ const updateItem = async (id, { productId, productName, quantity, unitPrice, tax
       resolvedName = product?.name || 'Unknown'
     }
 
-    const qty   = quantity ?? item.quantity
-    const price = unitPrice ?? item.unitPrice
-    const rate  = taxRate ?? Number(item.taxRate || 0)
-    const lineSubtotal = (Number(qty) || 0) * (Number(price) || 0)
-    const taxAmount    = toFixed(lineSubtotal * (Number(rate) / 100), 2)
-    const lineTotal    = toFixed(lineSubtotal + taxAmount, 2)
+    const qty      = quantity      ?? item.quantity
+    const price    = unitPrice     ?? item.unitPrice
+    const rate     = taxRate       ?? Number(item.taxRate || 0)
+    const discPct  = discountValue ?? Number(item.discountValue || 0)
+    const lineGross          = (Number(qty) || 0) * (Number(price) || 0)
+    const lineDiscountAmount = toFixed(lineGross * (Number(discPct) / 100), 2)
+    const lineSubtotal       = toFixed(lineGross - Number(lineDiscountAmount), 2)
+    const taxAmount          = toFixed(Number(lineSubtotal) * (Number(rate) / 100), 2)
+    const lineTotal          = toFixed(Number(lineSubtotal) + Number(taxAmount), 2)
 
     await item.update(
       {
@@ -445,6 +458,8 @@ const updateItem = async (id, { productId, productName, quantity, unitPrice, tax
         unitPrice: price,
         taxRate: rate,
         taxAmount,
+        discountValue:  Number(discPct),
+        discountAmount: lineDiscountAmount,
         total: lineTotal,
       },
       { transaction: t }
@@ -590,9 +605,10 @@ const createInvoice = async (id, userId, organizationId) => {
       // later deleted/renamed. Prefer the stored item snapshot, fall back to
       // the loaded associations.
       itemCode:      it.itemCode || it.saleItem?.code || it.salePackage?.code || it.product?.sku || null,
-      quantity:      Number(it.quantity)  || 1,
-      unitPrice:     Number(it.unitPrice) || 0,
-      taxRate:       Number(it.taxRate)   || 0,
+      quantity:      Number(it.quantity)      || 1,
+      unitPrice:     Number(it.unitPrice)     || 0,
+      taxRate:       Number(it.taxRate)       || 0,
+      discountValue: Number(it.discountValue) || 0,
     })),
     userId,
     organizationId,

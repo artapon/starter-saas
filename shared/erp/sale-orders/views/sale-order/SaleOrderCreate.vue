@@ -172,13 +172,14 @@
           <!-- Items table -->
           <div v-else>
             <div class="grid items-center gap-3 px-5 py-2.5 bg-[#F7F9FC] border-b border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-center">#</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.saleItem') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.store') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.description') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.items') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.unitPrice') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.lineDiscount') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.amount') }}</div>
               <div></div>
               <div></div>
@@ -195,7 +196,7 @@
                   dragFromIdx === topLevelStart(idx) ? 'opacity-40' : '',
                   dragOverIdx === topLevelStart(idx) && dragFromIdx !== topLevelStart(idx) ? 'border-t-2 border-t-primary-500' : '',
                 ]"
-                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 5.5rem 1.5rem 2rem"
+                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem"
                 @dragover="onDragOver($event, idx)"
                 @drop="onDrop(idx)"
                 @dragleave="onDragLeave(idx)">
@@ -261,9 +262,9 @@
                          focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
                          transition-all placeholder:text-[#CBD5E1]" />
 
-                <!-- Quantity / Unit price / Amount: priced on parents + standalone only -->
+                <!-- Quantity / Unit price / Disc % / Amount: priced on parents + standalone only -->
                 <template v-if="line.parentKey">
-                  <div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div>
                 </template>
                 <template v-else>
                   <input v-model.number="line.quantity" type="number" min="1"
@@ -276,9 +277,17 @@
                            text-[#1C2434] tabular-nums focus:outline-none focus:ring-2
                            focus:ring-primary-500/20 focus:border-primary-400 transition-all placeholder:text-[#CBD5E1]" />
 
+                  <div v-if="line.isPackage" class="flex items-center justify-center h-9">
+                    <span class="text-[12px] text-[#CBD5E1]">—</span>
+                  </div>
+                  <input v-else v-model.number="line.discountValue" type="number" min="0" max="100" step="0.01" placeholder="0"
+                    class="w-full px-2 py-2 border border-[#E2E8F0] text-[13px] text-right
+                           text-[#1C2434] tabular-nums focus:outline-none focus:ring-2
+                           focus:ring-primary-500/20 focus:border-primary-400 transition-all placeholder:text-[#CBD5E1]" />
+
                   <div class="text-[13px] tabular-nums text-right"
                     :class="line.isPackage ? 'font-bold text-primary-700' : 'font-semibold text-[#1C2434]'">
-                    {{ fmtMoney((line.quantity || 0) * (line.unitPrice || 0)) }}
+                    {{ fmtMoney(lineNet(line)) }}
                   </div>
                 </template>
 
@@ -316,8 +325,8 @@
 
             <!-- Subtotal footer -->
             <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 5.5rem 1.5rem 2rem">
-              <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
+              <div class="col-span-7 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
                 {{ t('erp.orders.subtotal') }}
               </div>
               <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ fmtMoney(subtotal) }}</div>
@@ -808,7 +817,7 @@ function addLine() {
   form.value.items.push({
     key: newKey(), parentKey: '', isPackage: false, salePackageId: '',
     saleItemId: '', storeId: '', hasProduct: false, productName: '',
-    quantity: 1, unitPrice: 0, taxRate: defaultTaxRate(),
+    quantity: 1, unitPrice: 0, taxRate: defaultTaxRate(), discountValue: 0,
   })
 }
 
@@ -932,6 +941,7 @@ function makeLineFromSaleItem(si, parentKey = '') {
     quantity:      1,
     unitPrice:     pricing ? Number(pricing.unitPrice) : 0,
     taxRate:       defaultTaxRate(),
+    discountValue: 0,
   }
 }
 
@@ -1088,10 +1098,15 @@ function isDuplicate(line) {
   return !line.parentKey && !!line.saleItemId && duplicateSaleItemIds.value.has(line.saleItemId)
 }
 
-function lineTax(line) {
-  // Children carry no price — only their parent (the package) contributes.
+function lineNet(line) {
   if (line.parentKey) return 0
-  return (line.quantity || 0) * (line.unitPrice || 0) * ((line.taxRate || 0) / 100)
+  const gross = (line.quantity || 0) * (line.unitPrice || 0)
+  const disc  = Number(line.discountValue) || 0
+  return gross * (1 - disc / 100)
+}
+function lineTax(line) {
+  if (line.parentKey) return 0
+  return lineNet(line) * ((line.taxRate || 0) / 100)
 }
 const itemsSubtitle = computed(() => {
   const standalone = form.value.items.filter(i => !i.parentKey && !i.isPackage).length
@@ -1102,7 +1117,7 @@ const itemsSubtitle = computed(() => {
   if (packages)   parts.push(`${packages} package${packages !== 1 ? 's' : ''}`)
   return parts.join(' · ')
 })
-const subtotal   = computed(() => form.value.items.reduce((s, i) => i.parentKey ? s : s + (i.quantity || 0) * (i.unitPrice || 0), 0))
+const subtotal   = computed(() => form.value.items.reduce((s, i) => s + lineNet(i), 0))
 const taxAmount  = computed(() => toFixed(form.value.items.reduce((s, i) => s + lineTax(i), 0), 2))
 const discountAmount = computed(() => {
   const gross = subtotal.value + Number(taxAmount.value)
@@ -1164,13 +1179,14 @@ async function save({ redirect = true } = {}) {
       ...form.value,
       discountType:  form.value.discountType  || null,
       discountValue: Number(form.value.discountValue) || 0,
-      items: form.value.items.map(({ key, parentKey, salePackageId, saleItemId, storeId, productName, quantity, unitPrice, taxRate }) => ({
+      items: form.value.items.map(({ key, parentKey, salePackageId, saleItemId, storeId, productName, quantity, unitPrice, taxRate, discountValue }) => ({
         key, parentKey: parentKey || '',
         salePackageId: salePackageId || null,
         saleItemId:    saleItemId    || null,
         storeId:       storeId       || null,
         productName, quantity, unitPrice,
-        taxRate: Number(taxRate) || 0,
+        taxRate:       Number(taxRate)       || 0,
+        discountValue: Number(discountValue) || 0,
       })),
     }
     let data

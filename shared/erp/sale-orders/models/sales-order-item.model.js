@@ -61,9 +61,11 @@ const SalesOrderItem = sequelize.define('SalesOrderItem', {
     defaultValue: 0,
     comment: 'Unit Price (ราคาต่อหน่วย)',
   },
-  taxRate:        { type: DataTypes.DECIMAL(5, 2),  allowNull: false, defaultValue: 0 , comment: 'Tax Rate (%) (อัตราภาษี (%))'},
+  taxRate:        { type: DataTypes.DECIMAL(5, 2),  allowNull: false, defaultValue: 0, comment: 'Tax Rate (%) (อัตราภาษี (%))' },
   taxAmount:      { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
-  total:          { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 , comment: 'Total (ยอดรวม)'},
+  discountValue:  { type: DataTypes.DECIMAL(5, 2),  allowNull: false, defaultValue: 0, comment: 'Line Discount % (ส่วนลดบรรทัด %)' },
+  discountAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+  total:          { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0, comment: 'Total (ยอดรวม)' },
   ...auditFields,
 }, {
   tableName: 'sales_order_items',

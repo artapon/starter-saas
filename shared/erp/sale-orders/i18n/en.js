@@ -32,6 +32,7 @@ export default {
       store:        'Store',
       description:  'Description',
       unitPrice:    'Unit Price',
+      lineDiscount: 'Disc %',
       amount:       'Amount',
       orderSummary: 'Order Summary',
       items:        'Items',

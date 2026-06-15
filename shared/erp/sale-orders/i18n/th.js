@@ -32,6 +32,7 @@ export default {
       store:        'คลัง',
       description:  'คำอธิบาย',
       unitPrice:    'ราคาต่อหน่วย',
+      lineDiscount: 'ส่วนลด %',
       amount:       'จำนวนเงิน',
       orderSummary: 'สรุปคำสั่ง',
       items:        'รายการ',
