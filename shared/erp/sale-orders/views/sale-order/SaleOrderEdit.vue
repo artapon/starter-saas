@@ -182,7 +182,7 @@
           <!-- Items table -->
           <div v-else>
             <div class="grid items-center gap-3 px-5 py-2.5 bg-[#F7F9FC] border-b border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 2rem 2.25rem">
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-center">#</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.saleItem') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.store') }}</div>
@@ -205,7 +205,7 @@
                   dragFromIdx === topLevelStart(idx) ? 'opacity-40' : '',
                   dragOverIdx === topLevelStart(idx) && dragFromIdx !== topLevelStart(idx) ? 'border-t-2 border-t-primary-500' : '',
                 ]"
-                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 1.5rem 2rem"
+                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 2rem 2.25rem"
                 @dragover="onDragOver($event, idx)"
                 @drop="onDrop(idx)"
                 @dragleave="onDragLeave(idx)">
@@ -307,7 +307,9 @@
                     tabindex="-1"
                     @click="toggleDupPopover(line)"
                     :aria-label="t('erp.orders.duplicateItemWarning')"
-                    class="flex items-center justify-center w-5 h-5 hover:bg-amber-100 text-amber-500 transition-colors">
+                    :title="t('erp.orders.duplicateItemWarning')"
+                    class="flex items-center justify-center w-6 h-6 bg-amber-100 text-amber-600
+                           border border-amber-300 hover:bg-amber-200 transition-colors">
                     <ExclamationTriangleIcon class="w-4 h-4" />
                   </button>
                   <div v-if="openDupKey === line.key"
@@ -323,18 +325,18 @@
                 <div v-else></div>
 
                 <button @click="removeLine(idx)" type="button"
-                  :title="line.isPackage ? t('erp.orders.removePackage') : ''"
+                  :title="line.isPackage ? t('erp.orders.removePackage') : t('common.delete')"
                   class="w-7 h-7 flex items-center justify-center flex-shrink-0
-                         text-[#CBD5E1] hover:text-red-500 hover:bg-red-50 transition-colors
-                         opacity-0 group-hover:opacity-100">
-                  <TrashIcon class="w-3.5 h-3.5" />
+                         text-[#94A3B8] border border-[#E2E8F0] bg-white
+                         hover:text-white hover:bg-red-500 hover:border-red-500 transition-colors">
+                  <TrashIcon class="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             <!-- Subtotal footer -->
             <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 2rem 2.25rem">
               <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
                 {{ t('erp.orders.subtotal') }}
               </div>
@@ -410,7 +412,7 @@
                 <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.wht') }}</dt>
                 <div class="flex items-center gap-1.5">
                   <select v-model="form.whtCode" @change="onWhtChange"
-                    class="max-w-[10rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                    class="max-w-[20rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
                            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
                     <option value="">—</option>
                     <option v-for="o in whtOptions" :key="o.id" :value="o.code">{{ o.name }} ({{ o.dataValue }}%)</option>
