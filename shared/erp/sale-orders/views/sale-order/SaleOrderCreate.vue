@@ -172,11 +172,10 @@
           <!-- Items table -->
           <div v-else>
             <div class="grid items-center gap-3 px-5 py-2.5 bg-[#F7F9FC] border-b border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-center">#</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.saleItem') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.store') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.description') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.items') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.unitPrice') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.lineDiscount') }}</div>
@@ -196,7 +195,7 @@
                   dragFromIdx === topLevelStart(idx) ? 'opacity-40' : '',
                   dragOverIdx === topLevelStart(idx) && dragFromIdx !== topLevelStart(idx) ? 'border-t-2 border-t-primary-500' : '',
                 ]"
-                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem"
+                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem"
                 @dragover="onDragOver($event, idx)"
                 @drop="onDrop(idx)"
                 @dragleave="onDragLeave(idx)">
@@ -227,8 +226,9 @@
                   <span class="truncate">{{ line.productName }}</span>
                   <span class="text-[11px] font-normal text-[#9BA7B0]">· {{ t('erp.orders.salePackage') }}</span>
                 </div>
-                <div v-else-if="line.parentKey" class="text-[12px] text-[#9BA7B0] truncate pl-2">
-                  {{ t('erp.orders.packageItem') }}
+                <div v-else-if="line.parentKey" class="flex items-center gap-2 pl-4 text-[13px] text-[#374151] truncate">
+                  <span class="truncate">{{ line.productName }}</span>
+                  <span class="text-[11px] font-semibold text-[#9BA7B0] tabular-nums flex-shrink-0">× {{ line.quantity }}</span>
                 </div>
                 <SearchSelectPopup
                   v-else
@@ -248,19 +248,6 @@
                     <span class="text-[12px] text-[#CBD5E1]">—</span>
                   </div>
                 </div>
-
-                <!-- Description -->
-                <div v-if="line.parentKey" class="flex items-center gap-2 pl-5 text-[13px] text-[#374151] truncate">
-                  <span class="truncate">{{ line.productName }}</span>
-                  <span class="text-[11px] font-semibold text-[#9BA7B0] tabular-nums flex-shrink-0">× {{ line.quantity }}</span>
-                </div>
-                <div v-else-if="line.isPackage" class="text-[12px] text-[#637381] italic">
-                  {{ childrenOf(line.key).length }} item{{ childrenOf(line.key).length !== 1 ? 's' : '' }}
-                </div>
-                <input v-else v-model="line.productName" type="text" placeholder="Description…"
-                  class="w-full px-2.5 py-2 border border-[#E2E8F0] text-[13px] text-[#1C2434]
-                         focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
-                         transition-all placeholder:text-[#CBD5E1]" />
 
                 <!-- Quantity / Unit price / Disc % / Amount: priced on parents + standalone only -->
                 <template v-if="line.parentKey">
@@ -325,8 +312,8 @@
 
             <!-- Subtotal footer -->
             <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
-              <div class="col-span-7 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
+              <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
                 {{ t('erp.orders.subtotal') }}
               </div>
               <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ fmtMoney(subtotal) }}</div>
