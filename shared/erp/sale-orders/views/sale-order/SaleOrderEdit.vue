@@ -246,6 +246,7 @@
                   :options="groupedItemOptions"
                   group-values="items"
                   group-label="label"
+                  meta-key="meta"
                   placeholder="— Item —"
                   search-placeholder="Search by code or name…"
                   @change="onPickerChange(line, idx)"
@@ -253,7 +254,7 @@
 
                 <!-- Store -->
                 <div>
-                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" />
+                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" @change="clampLineQty(line)" />
                   <div v-else class="flex items-center justify-center h-9">
                     <span class="text-[12px] text-[#CBD5E1]">—</span>
                   </div>
@@ -265,9 +266,13 @@
                 </template>
                 <template v-else>
                   <input v-model.number="line.quantity" type="number" min="1"
-                    class="w-full px-2 py-2 border border-[#E2E8F0] text-[13px] text-right
+                    :max="Number.isFinite(availableStock(line)) ? availableStock(line) : null"
+                    @input="clampLineQty(line)"
+                    :title="stockTitle(line)"
+                    class="w-full px-2 py-2 border text-[13px] text-right
                            text-[#1C2434] tabular-nums focus:outline-none focus:ring-2
-                           focus:ring-primary-500/20 focus:border-primary-400 transition-all" />
+                           focus:ring-primary-500/20 focus:border-primary-400 transition-all"
+                    :class="atStockLimit(line) ? 'border-amber-300 bg-amber-50/40' : 'border-[#E2E8F0]'" />
 
                   <input v-model.number="line.unitPrice" type="number" min="0" step="0.01" placeholder="0.00"
                     class="w-full px-2.5 py-2 border border-[#E2E8F0] text-[13px] text-right
@@ -690,7 +695,10 @@ const selectedCustomer = computed(() =>
 )
 
 const groupedItemOptions = computed(() => {
-  const groups = [{ label: t('erp.orders.saleItems'), items: saleItems.value }]
+  const groups = [{
+    label: t('erp.orders.saleItems'),
+    items: saleItems.value.map(si => ({ ...si, meta: itemMeta(si) })),
+  }]
   if (salePackages.value.length) {
     groups.push({
       label: t('erp.orders.salePackages'),
@@ -699,6 +707,56 @@ const groupedItemOptions = computed(() => {
   }
   return groups
 })
+
+// saleItemId → { total (aggregate on-hand), byStore: { storeId: qty } }
+const saleItemStock = computed(() => {
+  const map = new Map()
+  for (const si of saleItems.value) {
+    if (!si.product) continue
+    const byStore = {}
+    for (const ss of si.product.storeStocks || []) byStore[ss.storeId] = Number(ss.stock) || 0
+    map.set(si.id, { total: Number(si.product.stock) || 0, byStore })
+  }
+  return map
+})
+
+// Available on-hand for a line: per its chosen store when store-level data
+// exists, otherwise the aggregate. Non-stock items (services/packages) are
+// unlimited (Infinity) so they're never capped.
+function availableStock(line) {
+  if (line.parentKey || line.isPackage || !line.hasProduct) return Infinity
+  const info = saleItemStock.value.get(line.saleItemId)
+  if (!info) return Infinity
+  const hasStoreData = Object.keys(info.byStore).length > 0
+  if (line.storeId && hasStoreData) return info.byStore[line.storeId] || 0
+  return info.total
+}
+function atStockLimit(line) {
+  const max = availableStock(line)
+  return Number.isFinite(max) && (line.quantity || 0) >= max
+}
+function exceedsStock(line) {
+  const max = availableStock(line)
+  return Number.isFinite(max) && (line.quantity || 0) > max
+}
+function clampLineQty(line) {
+  const max = availableStock(line)
+  if (Number.isFinite(max) && (line.quantity || 0) > max) line.quantity = Math.max(max, 0)
+}
+function stockTitle(line) {
+  const max = availableStock(line)
+  if (!Number.isFinite(max)) return ''
+  return `${t('erp.orders.availableStock')}: ${max}`
+}
+
+// Price (best for the chosen customer) + on-hand, shown in the item picker.
+function itemMeta(si) {
+  const pricing = getBestPricing(si, selectedCustomer.value?.customerGroupId)
+  const parts = []
+  if (pricing) parts.push(fmtMoney(Number(pricing.unitPrice)))
+  if (si.product) parts.push(`${t('erp.orders.stock')}: ${Number(si.product.stock) || 0}`)
+  return parts.join('  ·  ')
+}
 
 onMounted(async () => {
   const id = route.params.id
@@ -996,6 +1054,7 @@ function onSaleItemChange(line) {
   if (!line.hasProduct) line.storeId = ''
   else if (!line.storeId) line.storeId = defaultLineStore()
   applyPricing(line)
+  clampLineQty(line)
 }
 
 async function onPickerChange(line, idx) {
@@ -1101,6 +1160,7 @@ async function onBulkAdd(objects) {
     }
   }
   if (!newLines.length) return
+  for (const l of newLines) clampLineQty(l)
   form.value.items.push(...newLines)
   await nextTick()
   const firstPriced = newLines.find(l => !l.parentKey)
@@ -1193,6 +1253,7 @@ const canSave = computed(() => {
     if (!item.productName?.trim()) return false
     if (item.hasProduct && !item.storeId) return false
     if (!item.quantity || item.quantity < 1) return false
+    if (exceedsStock(item)) return false
   }
   return true
 })
@@ -1211,6 +1272,7 @@ function validate() {
     if (!item.productName?.trim())        { e.items = 'All items need a description'; break }
     if (item.hasProduct && !item.storeId) { e.items = 'Select a store for product items'; break }
     if (!item.quantity || item.quantity < 1) { e.items = 'All items need a valid quantity'; break }
+    if (exceedsStock(item)) { e.items = `${item.productName}: ${t('erp.orders.qtyExceedsStock')} (${availableStock(item)})`; break }
   }
   errors.value = e
   return Object.keys(e).length === 0

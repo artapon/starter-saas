@@ -88,6 +88,10 @@
                       {{ row.option[codeKey] }}
                     </span>
                     <span class="flex-1 text-[13px] text-[#1C2434] truncate">{{ row.option[labelKey] }}</span>
+                    <span v-if="metaKey && row.option[metaKey]"
+                      class="text-[12px] text-[#637381] tabular-nums flex-shrink-0 whitespace-nowrap">
+                      {{ row.option[metaKey] }}
+                    </span>
                     <CheckIcon v-if="!multiple && isSelectedSingle(row.option)"
                       class="w-4 h-4 text-primary-600 flex-shrink-0" />
                   </button>
@@ -154,6 +158,8 @@ const props = defineProps({
   trackBy:           { type: String, default: 'id' },
   labelKey:          { type: String, default: 'name' },
   codeKey:           { type: String, default: 'code' },
+  // Optional right-aligned secondary text per row (e.g. price · stock)
+  metaKey:           { type: String, default: '' },
   placeholder:       { type: String, default: '' },
   searchPlaceholder: { type: String, default: '' },
   invalid:           { type: Boolean, default: false },
