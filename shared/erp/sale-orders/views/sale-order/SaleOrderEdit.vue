@@ -39,12 +39,12 @@
         <FormCard :title="t('erp.orders.customerInfo')" :icon="UserIcon" icon-color="primary" :padded="false">
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-5">
 
-            <!-- Sale type: cash → Receipt, credit → Invoice -->
-            <div ref="saleTypeContainerRef"
+            <!-- Sale type: cash → Receipt, credit → Invoice — own full row -->
+            <div class="lg:col-span-3" ref="saleTypeContainerRef"
               @keydown.left.prevent="cycleSaleType(-1)"
               @keydown.right.prevent="cycleSaleType(1)">
               <FieldLabel :text="t('erp.orders.saleType')" required />
-              <div class="flex border border-[#E2E8F0] overflow-hidden text-sm">
+              <div class="flex border border-[#E2E8F0] overflow-hidden text-sm max-w-xs">
                 <button v-for="opt in SALE_TYPE_OPTIONS" :key="opt.value" type="button"
                   @click="form.saleType = opt.value"
                   :class="form.saleType === opt.value
@@ -54,24 +54,6 @@
                 </button>
               </div>
             </div>
-
-            <!-- Payment terms — credit sales only (from master-data) -->
-            <FormField v-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
-              <template #default="{ id }">
-                <select :id="id" v-model="form.paymentTerms" class="input">
-                  <option value="">—</option>
-                  <option v-for="opt in paymentTerms" :key="opt.id" :value="opt.code || opt.name">{{ opt.name }}</option>
-                </select>
-              </template>
-            </FormField>
-
-            <!-- Reference / PO # -->
-            <FormField name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors">
-              <template #default="{ id }">
-                <input :id="id" ref="referenceInputRef" v-model="form.referenceNumber" type="text"
-                  placeholder="e.g. PO-2025-001" class="input" />
-              </template>
-            </FormField>
 
             <!-- Customer -->
             <div class="lg:col-span-2">
@@ -95,6 +77,14 @@
               <FieldError :error="errors.customerId" />
               <CustomerChip :customer="selectedCustomer" />
             </div>
+
+            <!-- Reference / PO # -->
+            <FormField name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors">
+              <template #default="{ id }">
+                <input :id="id" ref="referenceInputRef" v-model="form.referenceNumber" type="text"
+                  placeholder="e.g. PO-2025-001" class="input" />
+              </template>
+            </FormField>
 
             <!-- Order Date -->
             <FormField name="orderDate" :label="t('erp.orders.orderDate')" :errors="errors" required>
@@ -124,6 +114,16 @@
                 <template #singleLabel="{ option }">{{ option.name }}</template>
               </SearchSelect>
             </div>
+
+            <!-- Payment terms — credit sales only (from master-data) -->
+            <FormField v-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
+              <template #default="{ id }">
+                <select :id="id" v-model="form.paymentTerms" class="input">
+                  <option value="">—</option>
+                  <option v-for="opt in paymentTerms" :key="opt.id" :value="opt.code || opt.name">{{ opt.name }}</option>
+                </select>
+              </template>
+            </FormField>
 
           </div>
         </FormCard>
