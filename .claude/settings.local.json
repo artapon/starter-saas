@@ -173,7 +173,15 @@
       "Bash(DB_DIALECT=sqlite DB_STORAGE=migtest_base.sqlite node -e ' *)",
       "PowerShell(Remove-Item *)",
       "Bash(npm test *)",
-      "Read(//d/d/Projects/starter-saas/client/src/**)"
+      "Read(//d/d/Projects/starter-saas/client/src/**)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(node \"D:\\\\Projects\\\\starter-saas\\\\server\\\\_migtest.js\")",
+      "PowerShell(Copy-Item *)",
+      "PowerShell(node \"D:\\\\Projects\\\\starter-saas\\\\server\\\\_migcheck.js\")",
+      "PowerShell(node \"D:\\\\Projects\\\\starter-saas\\\\tmp\\\\check-usage.js\")",
+      "PowerShell(node \"D:\\\\Projects\\\\starter-saas\\\\tmp\\\\check-usage2.js\")",
+      "PowerShell(git log --oneline -3 hotfix/fix-tenant-demo; git merge-base --is-ancestor 3d83208 main; echo \"on main: $?\")",
+      "PowerShell(npx jest core --silent 2>$null)"
     ]
   }
 }

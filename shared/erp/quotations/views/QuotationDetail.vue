@@ -138,7 +138,7 @@
             <ArrowRightIcon class="w-4 h-4" />
             {{ converting ? t('erp.common.saving') : t('erp.quotations.convertToOrder') }}
           </button>
-          <RouterLink v-if="quotation.convertedToOrderId" :to="`/erp/orders/${quotation.convertedToOrderId}`"
+          <RouterLink v-if="quotation.convertedToOrderId" :to="`/erp/sale-orders/${quotation.convertedToOrderId}`"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100">
             <ArrowRightIcon class="w-3.5 h-3.5" />
             {{ t('erp.quotations.viewOrder') }}
@@ -295,7 +295,7 @@ async function convertToOrder() {
   try {
     const { data } = await api.post(`/erp/quotations/${quotation.value.id}/convert`)
     if (data.data?.orderId) {
-      router.push(`/erp/orders/${data.data.orderId}`)
+      router.push(`/erp/sale-orders/${data.data.orderId}`)
     } else {
       await fetchQuotation()
     }

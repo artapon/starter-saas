@@ -2,12 +2,10 @@
   <AppLayout>
     <div class="space-y-5">
 
-      <PageHeader :title="loading ? t('erp.deliveryOrders.editOrder') : (doc?.refNo || t('erp.deliveryOrders.editOrder'))"
-        :back-to="`/erp/delivery-orders/${route.params.id}`"
+      <PageHeader :title="t('erp.deliveryOrders.new')" back-to="/erp/delivery-orders"
         :breadcrumb="[
           { label: t('erp.deliveryOrders.title'), to: '/erp/delivery-orders' },
-          { label: doc?.refNo || '…', to: `/erp/delivery-orders/${route.params.id}` },
-          { label: t('common.edit') },
+          { label: t('common.create') },
         ]">
         <template #badge>
           <StatusPill :label="t('erp.common.draft')" />
@@ -15,11 +13,11 @@
         <template #actions>
           <KeyboardShortcuts :shortcuts="shortcuts" width="w-48" />
           <HeaderSaveActions
-            :cancel-to="`/erp/delivery-orders/${route.params.id}`"
+            cancel-to="/erp/delivery-orders"
             :cancel-label="t('common.cancel')"
             :saving="saving"
-            :saving-label="t('erp.common.saving')"
-            :save-label="t('common.saveChanges')"
+            :saving-label="t('erp.common.creating')"
+            :save-label="t('erp.deliveryOrders.create')"
             :disabled="!canSave"
             :disabled-hint="t('erp.deliveryOrders.fillRequiredFields')"
             @save="save"
@@ -27,20 +25,19 @@
         </template>
       </PageHeader>
 
-      <LoadingSpinner v-if="loading" />
+      <div class="space-y-5">
 
-      <ErrorBanner v-else-if="loadError" :message="loadError" />
-
-      <div v-else class="space-y-5">
-
+        <!-- Customer & Delivery Info -->
         <FormCard :title="t('erp.deliveryOrders.info')" :icon="TruckIcon" icon-color="primary" :padded="false">
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-5">
 
+            <!-- Reference / PO # -->
             <div ref="refNoRef">
               <FormField name="referenceNumber" :label="t('erp.deliveryOrders.referenceNumber')" :errors="mergedErrors"
                 v-model="form.referenceNumber" placeholder="e.g. PO-2025-001" />
             </div>
 
+            <!-- Customer -->
             <div class="lg:col-span-2">
               <FieldLabel :text="t('erp.deliveryOrders.customer')" required />
               <SearchSelect v-model="form.customerId" :options="customers" :invalid="!!mergedErrors.customerId" placeholder="— Select customer —">
@@ -51,23 +48,27 @@
               <CustomerChip :customer="selectedCustomer" />
             </div>
 
+            <!-- Date -->
             <FormField name="date" :label="t('erp.common.date')" :errors="mergedErrors" required>
               <template #default="{ hasError }">
                 <DateInput v-model="form.date" :class="['input', hasError && 'input-error']" />
               </template>
             </FormField>
 
+            <!-- Delivery Date -->
             <FormField name="deliveryDate" :label="t('erp.deliveryOrders.deliveryDate')" :errors="mergedErrors">
               <template #default>
                 <DateInput v-model="form.deliveryDate" class="input" />
               </template>
             </FormField>
 
+            <!-- Reference Sales Order -->
             <div>
               <FieldLabel :text="t('erp.deliveryOrders.referenceSO')" />
-              <SearchSelect v-model="form.orderId" :options="orders" label-key="orderNumber" placeholder="— None —" />
+              <SearchSelect v-model="form.orderId" :options="orders" label-key="orderNumber" placeholder="— None —" @change="onOrderChange" />
             </div>
 
+            <!-- Payment terms -->
             <FormField name="paymentTerms" :label="t('erp.deliveryOrders.paymentTerms')" :errors="mergedErrors">
               <template #default="{ id }">
                 <select :id="id" v-model="form.paymentTerms" class="input">
@@ -77,6 +78,7 @@
               </template>
             </FormField>
 
+            <!-- Salesperson -->
             <div>
               <FieldLabel :text="t('erp.deliveryOrders.salesperson')" />
               <SearchSelect v-model="form.salespersonId" :options="staff" placeholder="— Salesperson —">
@@ -88,6 +90,7 @@
           </div>
         </FormCard>
 
+        <!-- Addresses -->
         <FormCard :title="t('erp.deliveryOrders.addresses')" :icon="MapPinIcon" icon-color="primary" :padded="false">
           <template #actions>
             <button type="button" @click="syncAddressesFromCustomer"
@@ -101,7 +104,8 @@
           </template>
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <FormField name="shippingAddress" :label="t('erp.deliveryOrders.shippingAddress')" :errors="mergedErrors"
-              v-model="form.shippingAddress" textarea :rows="3" input-class="resize-none" />
+              v-model="form.shippingAddress" textarea :rows="3" placeholder="Ship to address…"
+              input-class="resize-none" />
             <div>
               <div class="flex items-center justify-between">
                 <FieldLabel :text="t('erp.deliveryOrders.billingAddress')" />
@@ -111,22 +115,34 @@
                 </label>
               </div>
               <textarea v-model="form.billingAddress" rows="3" :disabled="billingSameAsShipping"
+                placeholder="Bill to address…"
                 class="input resize-none disabled:bg-[#F7F9FC] disabled:text-[#9BA7B0]" />
             </div>
           </div>
         </FormCard>
 
+        <!-- Line Items -->
         <FormCard :title="t('erp.deliveryOrders.lineItems')" :icon="ClipboardDocumentListIcon" icon-color="green"
           :subtitle="form.items.length ? `${form.items.length} item${form.items.length !== 1 ? 's' : ''}` : ''"
           :padded="false">
           <template #actions>
-            <button @click="openBulkPicker" type="button"
-              class="inline-flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold
-                     text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200
-                     transition-colors">
-              <PlusIcon class="w-3.5 h-3.5" />
-              {{ t('erp.deliveryOrders.addItem') }}
-            </button>
+            <div class="flex items-center gap-2">
+              <button v-if="form.orderId" @click="loadFromOrder" type="button"
+                class="inline-flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold
+                       text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors">
+                <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+                {{ t('erp.deliveryOrders.loadFromSO') }}
+              </button>
+              <button @click="openBulkPicker" type="button"
+                :title="`${t('erp.deliveryOrders.addItem')} (Ctrl+A)`"
+                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold
+                       text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200
+                       transition-colors">
+                <PlusIcon class="w-3.5 h-3.5" />
+                {{ t('erp.deliveryOrders.addItem') }}
+                <kbd class="hidden sm:inline ml-0.5 px-1.5 py-0.5 bg-white/80 border border-primary-200 font-mono text-[10px] text-primary-700">Ctrl+A</kbd>
+              </button>
+            </div>
           </template>
 
           <EmptyState v-if="!form.items.length"
@@ -212,6 +228,16 @@
               </div>
             </div>
 
+            <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 6rem 3fr 2rem">
+              <div class="col-span-4 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
+                {{ t('erp.deliveryOrders.totalItems') }}
+              </div>
+              <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ form.items.length }}</div>
+              <div></div>
+              <div></div>
+            </div>
+
             <p v-if="errors.items" class="px-5 py-2.5 text-[11px] text-red-600 bg-[#FEE2E2] border-t border-[#FECACA]">
               {{ errors.items }}
             </p>
@@ -232,15 +258,20 @@
 
         <ErrorBanner :message="globalError" />
 
+        <!-- Notes + Summary -->
         <FormCard :title="t('erp.deliveryOrders.deliverySummary')" :icon="CalculatorIcon" icon-color="slate" :padded="false">
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             <FormField name="notes" :label="t('erp.common.notes')" :errors="mergedErrors"
-              v-model="form.notes" textarea wrapper-class="flex flex-col text-left"
-              input-class="resize-none flex-1 min-h-[8rem]" />
+              v-model="form.notes" textarea placeholder="Handling instructions or remarks…"
+              wrapper-class="flex flex-col text-left" input-class="resize-none flex-1 min-h-[8rem]" />
             <dl class="w-full space-y-2.5">
               <div class="flex items-center justify-between text-[13px]">
                 <dt class="text-[#637381]">{{ t('erp.deliveryOrders.customer') }}</dt>
                 <dd class="font-semibold text-[#1C2434] truncate ml-3">{{ selectedCustomer?.name || '—' }}</dd>
+              </div>
+              <div class="flex items-center justify-between text-[13px]">
+                <dt class="text-[#637381]">{{ t('erp.deliveryOrders.deliveryDate') }}</dt>
+                <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtDate(form.deliveryDate) || '—' }}</dd>
               </div>
               <div class="flex items-center justify-between pt-2.5 border-t border-[#E2E8F0]">
                 <dt class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.deliveryOrders.totalItems') }}</dt>
@@ -253,7 +284,8 @@
       </div>
     </div>
 
-    <div v-if="!loading && !loadError" class="sticky bottom-0 -mx-6 mt-6 px-6 py-3.5 bg-white/95 backdrop-blur border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(15,23,42,0.05)] z-20
+    <!-- Sticky save bar -->
+    <div class="sticky bottom-0 -mx-6 mt-6 px-6 py-3.5 bg-white/95 backdrop-blur border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(15,23,42,0.05)] z-20
                 flex items-center justify-between gap-3">
       <div class="flex items-center gap-4">
         <div>
@@ -271,16 +303,18 @@
           {{ t('erp.deliveryOrders.discard') }}
         </button>
         <button @click="save" :disabled="!canSave || saving" type="button"
+          :title="!canSave ? t('erp.deliveryOrders.fillRequiredFields') : `${t('erp.deliveryOrders.create')} (Ctrl+S)`"
           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold
                  bg-primary-500 text-white hover:bg-primary-600 shadow-sm
                  disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
           <ArrowPathIcon v-if="saving" class="w-4 h-4 animate-spin" />
           <CheckIcon v-else class="w-4 h-4" />
-          {{ saving ? t('erp.common.saving') : t('common.saveChanges') }}
+          {{ saving ? t('erp.common.creating') : t('erp.deliveryOrders.create') }}
         </button>
       </div>
     </div>
 
+    <!-- Confirm dialog -->
     <Teleport to="body">
       <div v-if="confirmOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
         <div class="w-full max-w-sm bg-white shadow-2xl overflow-hidden">
@@ -310,10 +344,11 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import {
   PlusIcon, TrashIcon, CheckIcon,
-  ArrowPathIcon, TruckIcon, ClipboardDocumentListIcon, CalculatorIcon,
+  ArrowPathIcon, ArrowDownTrayIcon,
+  TruckIcon, ClipboardDocumentListIcon, CalculatorIcon,
   ExclamationTriangleIcon, Bars3Icon, MapPinIcon,
 } from '@heroicons/vue/24/outline'
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -331,26 +366,24 @@ import StatusPill from '@/components/form/StatusPill.vue'
 import HeaderSaveActions from '@/components/form/HeaderSaveActions.vue'
 import CustomerChip from '@/components/form/CustomerChip.vue'
 import EmptyState from '@/components/form/EmptyState.vue'
-import LoadingSpinner from '@/components/form/LoadingSpinner.vue'
 import { useFieldErrors } from '@/composables/useFieldErrors'
 import api from '@/api'
 import { parseApiError } from '@/utils/apiError'
+import { fmtDate } from '@/utils/fmt'
 
 const { t }    = useI18n()
-const route    = useRoute()
 const router   = useRouter()
 
 const { shortcuts } = useFormShortcuts({
   save: () => save(),
   cancel: () => discard(),
   enabled: () => !confirmOpen.value,
-  cancelLabel: 'Back to detail',
+  cancelLabel: 'Back to list',
   extra: [
     { combo: 'ctrl+a', handler: () => openBulkPicker(), hint: { key: 'Ctrl+A', label: 'Add item' } },
   ],
 })
 
-const doc          = ref(null)
 const customers    = ref([])
 const orders       = ref([])
 const saleItems    = ref([])
@@ -358,8 +391,6 @@ const salePackages = ref([])
 const stores       = ref([])
 const staff        = ref([])
 const paymentTerms = ref([])
-const loading      = ref(true)
-const loadError    = ref('')
 const saving       = ref(false)
 const globalError  = ref('')
 const errors       = ref({})
@@ -367,18 +398,21 @@ const { fieldErrors, setFromError, reset: resetErrors } = useFieldErrors()
 const refNoRef     = ref(null)
 
 const mergedErrors = computed(() => ({ ...errors.value, ...fieldErrors.value }))
-const billingSameAsShipping = ref(false)
 
-const form = ref({
-  customerId: '', date: '', deliveryDate: '', orderId: '',
+const today = new Date().toISOString().slice(0, 10)
+const form  = ref({
+  customerId: '', date: today, deliveryDate: '', orderId: '',
   referenceNumber: '', paymentTerms: '', salespersonId: '',
   shippingAddress: '', billingAddress: '',
   notes: '', items: [],
 })
+const billingSameAsShipping = ref(true)
 
 const dirty = ref(false)
 let dirtyArmed = false
 watch(form, () => { if (dirtyArmed) dirty.value = true }, { deep: true })
+onMounted(() => { setTimeout(() => { dirtyArmed = true }, 0) })
+onMounted(() => { setTimeout(() => { refNoRef.value?.querySelector('input')?.focus() }, 50) })
 
 function onBeforeUnload(e) {
   if (!dirty.value) return
@@ -429,19 +463,10 @@ const groupedItemOptions = computed(() => {
   return groups
 })
 
-let _localKeyCounter = 0
-function newKey() {
-  return (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : `k${Date.now()}-${++_localKeyCounter}`
-}
-
 onMounted(async () => {
-  const id = route.params.id
-  const [docRes, cRes, oRes, siRes, spRes, stRes, staffRes, ptRes] = await Promise.allSettled([
-    api.get(`/erp/delivery-orders/${id}`),
+  const [cRes, oRes, siRes, spRes, stRes, staffRes, ptRes] = await Promise.allSettled([
     api.get('/erp/customers',     { params: { limit: 200 } }),
-    api.get('/erp/orders',        { params: { limit: 500, status: 'confirmed' } }),
+    api.get('/erp/sale-orders',        { params: { limit: 500, status: 'confirmed' } }),
     api.get('/erp/sale-items',    { params: { limit: 500, status: 'active' } }),
     api.get('/erp/sale-packages', { params: { limit: 200, status: 'active' } }),
     api.get('/erp/stores',        { params: { limit: 200 } }),
@@ -455,54 +480,9 @@ onMounted(async () => {
   if (stRes.status    === 'fulfilled') stores.value       = stRes.value.data.data.stores   || []
   if (staffRes.status === 'fulfilled') staff.value        = staffRes.value.data.data.staff || []
   if (ptRes.status    === 'fulfilled') paymentTerms.value = ptRes.value.data.data.values   || []
-
-  if (docRes.status !== 'fulfilled') {
-    loadError.value = parseApiError(docRes.reason, 'Failed to load delivery order')
-    loading.value = false
-    return
-  }
-
-  const d = docRes.value.data.data.deliveryOrder
-  if (d.status !== 'draft') {
-    router.replace(`/erp/delivery-orders/${id}`)
-    return
-  }
-  doc.value = d
-
-  billingSameAsShipping.value = !!d.shippingAddress && d.shippingAddress === d.billingAddress
-
-  form.value = {
-    customerId:      d.customerId      || '',
-    date:            d.date            || '',
-    deliveryDate:    d.deliveryDate    || '',
-    orderId:         d.orderId         || '',
-    referenceNumber: d.referenceNumber || '',
-    paymentTerms:    d.paymentTerms    || '',
-    salespersonId:   d.salespersonId   || '',
-    shippingAddress: d.shippingAddress || d.address || '',
-    billingAddress:  d.billingAddress  || '',
-    notes:           d.notes           || '',
-    items: (d.items || []).map(it => {
-      const si = saleItems.value.find(s => s.id === it.saleItemId)
-      const hasProduct = !!(it.productId || si?.productId)
-      return {
-        key:         newKey(),
-        saleItemId:  it.saleItemId || '',
-        productId:   it.productId  || '',
-        storeId:     it.storeId    || '',
-        hasProduct,
-        productName: it.productName || '',
-        qty:         Number(it.qty) || 0,
-        notes:       it.notes || '',
-      }
-    }),
-  }
-  loading.value = false
-  await nextTick()
-  dirtyArmed = true
-  refNoRef.value?.querySelector('input')?.focus()
 })
 
+// Auto-populate addresses from the selected customer if shipping is empty.
 watch(() => form.value.customerId, (id) => {
   const c = customers.value.find(x => x.id === id)
   if (!c) return
@@ -511,7 +491,7 @@ watch(() => form.value.customerId, (id) => {
 
 watch(billingSameAsShipping, (on) => {
   if (on) form.value.billingAddress = form.value.shippingAddress
-})
+}, { immediate: true })
 watch(() => form.value.shippingAddress, (v) => {
   if (billingSameAsShipping.value) form.value.billingAddress = v
 })
@@ -523,10 +503,63 @@ function syncAddressesFromCustomer() {
   if (billingSameAsShipping.value) form.value.billingAddress = c.address
 }
 
+// When a Sales Order is picked, default the customer if not already set.
+function onOrderChange() {
+  const id = form.value.orderId
+  if (!id) return
+  const o = orders.value.find(x => x.id === id)
+  if (!o) return
+  if (!form.value.customerId && o.customerId) form.value.customerId = o.customerId
+}
+
+// Pull all items from the picked Sales Order, expanding packages into separate
+// lines. Effective qty = childQty × parentQty so the DO ships actual pieces.
+async function loadFromOrder() {
+  if (!form.value.orderId) return
+  try {
+    const { data } = await api.get(`/erp/sale-orders/${form.value.orderId}`)
+    const order = data.data.order
+    const newLines = []
+    const items = order.items || []
+    const itemsById = new Map(items.map(i => [i.id, i]))
+    for (const it of items) {
+      // Skip package headers — children become the DO lines.
+      if (it.salePackageId && !it.parentItemId) continue
+      let qty = Number(it.quantity) || 0
+      if (it.parentItemId) {
+        const parent = itemsById.get(it.parentItemId)
+        qty *= Number(parent?.quantity) || 1
+      }
+      newLines.push({
+        key:         newKey(),
+        saleItemId:  it.saleItemId || '',
+        productId:   it.productId  || '',
+        storeId:     it.storeId    || '',
+        hasProduct:  !!it.productId || !!it.saleItem?.productId,
+        productName: it.productName,
+        qty,
+        notes:       '',
+      })
+    }
+    if (!newLines.length) return
+    form.value.items = newLines
+  } catch (err) {
+    globalError.value = parseApiError(err, 'Failed to load items from sales order')
+  }
+}
+
+let _localKeyCounter = 0
+function newKey() {
+  return (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `k${Date.now()}-${++_localKeyCounter}`
+}
+
 function removeLine(idx) {
   form.value.items.splice(idx, 1)
 }
 
+// ── Drag-and-drop reorder ────────────────────────────────────────────────
 const dragFromIdx = ref(null)
 const dragOverIdx = ref(null)
 function onDragStart(e, idx) {
@@ -556,6 +589,7 @@ function onDragEnd() {
   dragOverIdx.value = null
 }
 
+// ── Picker / bulk-add ───────────────────────────────────────────────────
 const bulkPickerRef = ref(null)
 function openBulkPicker() { bulkPickerRef.value?.open() }
 
@@ -662,7 +696,7 @@ async function save() {
   if (!validate()) return
   saving.value = true
   try {
-    await api.put(`/erp/delivery-orders/${route.params.id}`, {
+    const { data } = await api.post('/erp/delivery-orders', {
       ...form.value,
       orderId:      form.value.orderId      || null,
       deliveryDate: form.value.deliveryDate || null,
@@ -674,10 +708,10 @@ async function save() {
       })),
     })
     dirty.value = false
-    router.push(`/erp/delivery-orders/${route.params.id}`)
+    router.push(`/erp/delivery-orders/${data.data.deliveryOrder.id}`)
   } catch (err) {
     const had = setFromError(err)
-    if (!had) globalError.value = parseApiError(err, 'Failed to update delivery order')
+    if (!had) globalError.value = parseApiError(err, 'Failed to create delivery order')
   } finally {
     saving.value = false
   }
@@ -692,6 +726,6 @@ async function discard() {
     })
     if (!ok) return
   }
-  router.push(`/erp/delivery-orders/${route.params.id}`)
+  router.push('/erp/delivery-orders')
 }
 </script>

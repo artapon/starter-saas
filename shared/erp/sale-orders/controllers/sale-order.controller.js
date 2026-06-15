@@ -1,5 +1,5 @@
 const { ok, created, fail, serverError } = require('../../../../server/core/response')
-const service = require('../services/order.service')
+const service = require('../services/sale-order.service')
 
 module.exports = {
   async list(req, res) {

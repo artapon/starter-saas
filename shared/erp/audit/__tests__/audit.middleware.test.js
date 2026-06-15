@@ -1,4 +1,4 @@
-// Unit tests for the automatic audit-capture middleware.
+﻿// Unit tests for the automatic audit-capture middleware.
 //
 //   1. describe() derives { action, entityType, entityId } from method + path
 //      (incl. the nested/ambiguous routes and trailing-action verbs).
@@ -22,15 +22,15 @@ const tick = () => new Promise((r) => setImmediate(r))
 describe('describe() — action/entity derivation', () => {
   const cases = [
     ['POST',   '/api/erp/customers',                     'customer.create',        'Customer'],
-    ['PUT',    `/api/erp/orders/${UUID}`,                'order.update',           'Order'],
-    ['PATCH',  `/api/erp/orders/${UUID}`,                'order.update',           'Order'],
+    ['PUT',    `/api/erp/sale-orders/${UUID}`,                'order.update',           'Order'],
+    ['PATCH',  `/api/erp/sale-orders/${UUID}`,                'order.update',           'Order'],
     ['DELETE', `/api/erp/item-master/${UUID}`,           'product.delete',         'Product'],
     ['POST',   '/api/erp/customer-groups',               'customer-group.create',  'CustomerGroup'],
     ['POST',   '/api/erp/purchasing/orders',             'purchase-order.create',  'PurchaseOrder'],
     ['POST',   '/api/erp/purchasing/requisitions',       'purchase-requisition.create', 'PurchaseRequisition'],
     ['POST',   '/api/erp/accounting/chart-of-accounts',  'chart-of-account.create', 'ChartOfAccount'],
     ['POST',   '/api/erp/settings/currencies',           'currency.create',        'Currency'],
-    ['POST',   `/api/erp/orders/${UUID}/confirm`,        'order.confirm',          'Order'],
+    ['POST',   `/api/erp/sale-orders/${UUID}/confirm`,        'order.confirm',          'Order'],
     ['POST',   '/api/erp/widgets',                       'widget.create',          'Widget'], // fallback
   ]
   test.each(cases)('%s %s → %s / %s', (method, path, action, entityType) => {
@@ -40,7 +40,7 @@ describe('describe() — action/entity derivation', () => {
   })
 
   test('entityId comes from a UUID in the path', () => {
-    expect(describeAction('PUT', `/api/erp/orders/${UUID}`, null).entityId).toBe(UUID)
+    expect(describeAction('PUT', `/api/erp/sale-orders/${UUID}`, null).entityId).toBe(UUID)
   })
 
   test('entityId falls back to the created row id in the response body', () => {

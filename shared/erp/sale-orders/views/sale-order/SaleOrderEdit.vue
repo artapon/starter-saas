@@ -3,10 +3,10 @@
     <div class="space-y-5">
 
       <PageHeader :title="loading ? t('erp.orders.editOrder') : (order?.orderNumber || t('erp.orders.editOrder'))"
-        :back-to="`/erp/orders/${route.params.id}`"
+        :back-to="`/erp/sale-orders/${route.params.id}`"
         :breadcrumb="[
-          { label: 'Orders', to: '/erp/orders' },
-          { label: order?.orderNumber || '…', to: `/erp/orders/${route.params.id}` },
+          { label: 'Orders', to: '/erp/sale-orders' },
+          { label: order?.orderNumber || '…', to: `/erp/sale-orders/${route.params.id}` },
           { label: t('common.edit') },
         ]">
         <template #badge>
@@ -15,7 +15,7 @@
         <template #actions>
           <KeyboardShortcuts :shortcuts="shortcuts" width="w-64" />
           <HeaderSaveActions
-            :cancel-to="`/erp/orders/${route.params.id}`"
+            :cancel-to="`/erp/sale-orders/${route.params.id}`"
             :cancel-label="t('common.cancel')"
             :saving="saving"
             :saving-label="t('erp.common.saving')"
@@ -663,7 +663,7 @@ const groupedItemOptions = computed(() => {
 onMounted(async () => {
   const id = route.params.id
   const [orderRes, customersRes, saleItemsRes, salePackagesRes, storesRes, staffRes, paymentTermsRes] = await Promise.allSettled([
-    api.get(`/erp/orders/${id}`),
+    api.get(`/erp/sale-orders/${id}`),
     api.get('/erp/customers',     { params: { limit: 200 } }),
     api.get('/erp/sale-items',    { params: { limit: 500, status: 'active' } }),
     api.get('/erp/sale-packages', { params: { limit: 200, status: 'active' } }),
@@ -687,7 +687,7 @@ onMounted(async () => {
   const o = orderRes.value.data.data.order
   if (o.status !== 'draft') {
     // Only draft orders can be edited — bounce back to detail
-    router.replace(`/erp/orders/${id}`)
+    router.replace(`/erp/sale-orders/${id}`)
     return
   }
   order.value = o
@@ -1174,10 +1174,10 @@ async function save({ redirect = true } = {}) {
         taxRate: Number(taxRate) || 0,
       })),
     }
-    await api.put(`/erp/orders/${route.params.id}`, payload)
+    await api.put(`/erp/sale-orders/${route.params.id}`, payload)
     dirty.value = false
     if (redirect) {
-      router.push(`/erp/orders/${route.params.id}`)
+      router.push(`/erp/sale-orders/${route.params.id}`)
     } else {
       draftSavedAt.value = new Date()
     }
@@ -1201,7 +1201,7 @@ async function discard() {
     })
     if (!ok) return
   }
-  router.push(`/erp/orders/${route.params.id}`)
+  router.push(`/erp/sale-orders/${route.params.id}`)
 }
 
 // "12s ago" / "2m ago" hint next to the Saved indicator.

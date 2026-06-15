@@ -12,7 +12,7 @@
           <KeyboardShortcuts :shortcuts="shortcuts" />
           <RouterLink
             v-can="'erp.orders.edit'"
-            to="/erp/orders/create"
+            to="/erp/sale-orders/create"
             title="New Order (Alt+N)"
             class="btn-primary">
             <PlusIcon class="w-4 h-4" />
@@ -173,8 +173,8 @@ const totalPages = computed(() => Math.ceil(total.value / limit))
 
 const { selectedIndex: selectedRowIndex, shortcuts, open: openRow } = useListShortcuts({
   rows: orders, page, totalPages,
-  open:        r => router.push(`/erp/orders/${r.id}`),
-  create:      () => router.push('/erp/orders/create'),
+  open:        r => router.push(`/erp/sale-orders/${r.id}`),
+  create:      () => router.push('/erp/sale-orders/create'),
   focusSearch: () => dataTableRef.value?.focusSearch(),
   newLabel: 'New order',
 })
@@ -195,7 +195,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 async function fetchOrders() {
   loading.value = true
   try {
-    const { data } = await api.get('/erp/orders', {
+    const { data } = await api.get('/erp/sale-orders', {
       params: {
         page: page.value, limit, search: search.value,
         status: filterStatus.value || undefined,
@@ -266,7 +266,7 @@ const columns = [
     meta: { thClass: 'w-16', tdClass: '' },
     cell: info => h('div', { class: 'flex items-center justify-end' }, [
       h(RouterLink, {
-        to: `/erp/orders/${info.row.original.id}`,
+        to: `/erp/sale-orders/${info.row.original.id}`,
         class: 'p-1.5 text-[#9BA7B0] hover:text-primary-500 hover:bg-primary-50 transition-colors',
         title: 'View',
       }, () => h(EyeIcon, { class: 'w-4 h-4' })),

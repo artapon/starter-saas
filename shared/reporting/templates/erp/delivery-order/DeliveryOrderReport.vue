@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <!-- ── Delivery-order document (receipt layout) ─────────── -->
   <DocFrame :stamp-label="stampLabel" :stamp-class="stampClass">
     <!-- Header -->
@@ -48,7 +48,7 @@
         </div>
         <div v-if="doc.salesOrder" class="grid grid-cols-[124px_1fr] gap-x-2">
           <span class="text-[#637381]">{{ t('erp.deliveryOrders.refSO') }}</span>
-          <RouterLink :to="`/erp/orders/${doc.salesOrder.id}`"
+          <RouterLink :to="`/erp/sale-orders/${doc.salesOrder.id}`"
             class="font-medium text-primary-500 hover:underline">
             {{ doc.salesOrder.orderNumber }}
           </RouterLink>

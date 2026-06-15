@@ -1,9 +1,9 @@
 const { Router } = require('express')
-const controller = require('../controllers/order.controller')
+const controller = require('../controllers/sale-order.controller')
 const { authenticate } = require('../../../../server/middleware/auth')
 const { requirePermission } = require('../../../../server/middleware/permission')
 const { validate } = require('../../../../server/middleware/validate')
-const { itemsRules, statusRules } = require('../validators/order.validators')
+const { itemsRules, statusRules } = require('../validators/sale-order.validators')
 
 const router = Router()
 
@@ -22,4 +22,4 @@ router.post('/:id/create-delivery-order', requirePermission('erp.orders.edit'), 
 router.post('/:id/create-invoice',        requirePermission('erp.invoices.edit'), (req, res) => controller.createInvoice(req, res))
 router.delete('/:id',      requirePermission('erp.orders.delete'), (req, res) => controller.remove(req, res))
 
-module.exports = { mountPath: '/orders', router }
+module.exports = { mountPath: '/sale-orders', router }

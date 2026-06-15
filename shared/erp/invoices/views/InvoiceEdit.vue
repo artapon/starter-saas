@@ -541,7 +541,7 @@ onMounted(async () => {
   const [invRes, cRes, oRes, siRes, spRes, stRes, staffRes, ptRes, whtRes] = await Promise.allSettled([
     api.get(`/erp/invoices/${id}`),
     api.get('/erp/customers',     { params: { limit: 200 } }),
-    api.get('/erp/orders',        { params: { limit: 500, status: 'confirmed' } }),
+    api.get('/erp/sale-orders',        { params: { limit: 500, status: 'confirmed' } }),
     api.get('/erp/sale-items',    { params: { limit: 500, status: 'active' } }),
     api.get('/erp/sale-packages', { params: { limit: 200, status: 'active' } }),
     api.get('/erp/stores',        { params: { limit: 200 } }),

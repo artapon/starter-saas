@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="space-y-5">
 
       <!-- Top action bar (hidden on print) -->
       <div class="flex items-start gap-3 print:hidden">
-        <RouterLink to="/erp/orders"
+        <RouterLink to="/erp/sale-orders"
           class="mt-0.5 p-2 text-[#9BA7B0] hover:text-[#1C2434] hover:bg-white
                  border border-transparent hover:border-[#E2E8F0] transition-all flex-shrink-0">
           <ArrowLeftIcon class="w-[18px] h-[18px]" />
@@ -23,7 +23,7 @@
             <DocCurrencyBadge v-if="order" :currency="order.currency" :exchange-rate="order.exchangeRate" :total="order.total" />
           </div>
           <nav class="flex items-center gap-1.5 mt-1">
-            <RouterLink to="/erp/orders" class="text-[12px] text-[#9BA7B0] hover:text-[#637381] transition-colors">
+            <RouterLink to="/erp/sale-orders" class="text-[12px] text-[#9BA7B0] hover:text-[#637381] transition-colors">
               Orders
             </RouterLink>
             <ChevronRightIcon class="w-3 h-3 text-[#CBD5E1]" />
@@ -40,7 +40,7 @@
             <PrinterIcon class="w-4 h-4" />
             {{ t('common.print') }}
           </button>
-          <RouterLink v-if="order.status === 'draft'" v-can="'erp.orders.edit'" :to="`/erp/orders/${order.id}/edit`"
+          <RouterLink v-if="order.status === 'draft'" v-can="'erp.orders.edit'" :to="`/erp/sale-orders/${order.id}/edit`"
             :title="`${t('common.edit')} (E)`"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold
                    text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition-colors">
@@ -66,7 +66,7 @@
         class="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3.5 print:hidden">
         <ExclamationCircleIcon class="w-5 h-5 flex-shrink-0 mt-0.5" />
         <span>{{ t('erp.common.notFound') }}
-          <RouterLink to="/erp/orders" class="underline ml-1">{{ t('erp.common.backToList') }}</RouterLink>
+          <RouterLink to="/erp/sale-orders" class="underline ml-1">{{ t('erp.common.backToList') }}</RouterLink>
         </span>
       </div>
 
@@ -92,7 +92,7 @@
         </div>
 
         <!-- Printable document (extracted report view) -->
-        <OrderReport :order="order" />
+        <SaleOrderReport :order="order" />
 
         <!-- ── Action panels (outside the document) ─────────────── -->
 
@@ -214,7 +214,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts.vue'
 import { useDetailShortcuts } from '@/composables/useShortcuts'
 import api from '@/api'
-import OrderReport from '@shared/reporting/templates/erp/order/OrderReport.vue'
+import SaleOrderReport from '@shared/reporting/templates/erp/sale-order/SaleOrderReport.vue'
 
 const { t }  = useI18n()
 const route  = useRoute()
@@ -231,11 +231,11 @@ const convertError   = ref('')
 const { shortcuts } = useDetailShortcuts({
   enabled:   () => !loading.value && !notFound.value && !confirmOpen.value,
   canEdit:   () => order.value?.status === 'draft',
-  edit:      () => router.push(`/erp/orders/${order.value.id}/edit`),
+  edit:      () => router.push(`/erp/sale-orders/${order.value.id}/edit`),
   print:     onPrint,
   remove:    confirmDelete,
   canRemove: () => order.value?.status === 'draft',
-  back:      () => router.push('/erp/orders'),
+  back:      () => router.push('/erp/sale-orders'),
 })
 
 // ── Custom confirm modal ────────────────────────────────────────────────
@@ -262,7 +262,7 @@ async function convertToDeliveryOrder() {
   convertError.value = ''
   converting.value = 'do'
   try {
-    const { data } = await api.post(`/erp/orders/${order.value.id}/create-delivery-order`)
+    const { data } = await api.post(`/erp/sale-orders/${order.value.id}/create-delivery-order`)
     router.push(`/erp/delivery-orders/${data.data.id}`)
   } catch (err) {
     convertError.value = err.response?.data?.message || 'Failed to create delivery order'
@@ -273,7 +273,7 @@ async function convertToInvoice() {
   convertError.value = ''
   converting.value = 'inv'
   try {
-    const { data } = await api.post(`/erp/orders/${order.value.id}/create-invoice`)
+    const { data } = await api.post(`/erp/sale-orders/${order.value.id}/create-invoice`)
     router.push(`/erp/invoices/${data.data.id}`)
   } catch (err) {
     convertError.value = err.response?.data?.message || 'Failed to create invoice'
@@ -359,7 +359,7 @@ onMounted(fetchOrder)
 async function fetchOrder() {
   loading.value = true
   try {
-    const { data } = await api.get(`/erp/orders/${route.params.id}`)
+    const { data } = await api.get(`/erp/sale-orders/${route.params.id}`)
     order.value = data.data.order
   } catch {
     notFound.value = true
@@ -372,7 +372,7 @@ async function changeStatus(status) {
   statusError.value    = ''
   updatingStatus.value = true
   try {
-    const { data } = await api.patch(`/erp/orders/${order.value.id}/status`, { status })
+    const { data } = await api.patch(`/erp/sale-orders/${order.value.id}/status`, { status })
     order.value = data.data.order
   } catch (err) {
     statusError.value = err.response?.data?.message || 'Failed to update status'
@@ -389,8 +389,8 @@ async function confirmDelete() {
   })
   if (!ok) return
   try {
-    await api.delete(`/erp/orders/${order.value.id}`)
-    router.push('/erp/orders')
+    await api.delete(`/erp/sale-orders/${order.value.id}`)
+    router.push('/erp/sale-orders')
   } catch (err) {
     statusError.value = err.response?.data?.message || 'Delete failed'
   }

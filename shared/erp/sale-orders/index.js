@@ -2,27 +2,27 @@ import { ShoppingCartIcon, TruckIcon } from '@heroicons/vue/24/outline'
 
 export const routes = [
   {
-    path: '/erp/orders',
-    name: 'erp-orders',
-    component: () => import('./views/order/OrdersList.vue'),
+    path: '/erp/sale-orders',
+    name: 'erp-sale-orders',
+    component: () => import('./views/sale-order/SaleOrdersList.vue'),
     meta: { requiresAuth: true, title: 'Sales Order' },
   },
   {
-    path: '/erp/orders/create',
-    name: 'erp-orders-create',
-    component: () => import('./views/order/OrderCreate.vue'),
+    path: '/erp/sale-orders/create',
+    name: 'erp-sale-orders-create',
+    component: () => import('./views/sale-order/SaleOrderCreate.vue'),
     meta: { requiresAuth: true, title: 'New Order' },
   },
   {
-    path: '/erp/orders/:id/edit',
-    name: 'erp-orders-edit',
-    component: () => import('./views/order/OrderEdit.vue'),
+    path: '/erp/sale-orders/:id/edit',
+    name: 'erp-sale-orders-edit',
+    component: () => import('./views/sale-order/SaleOrderEdit.vue'),
     meta: { requiresAuth: true, title: 'Edit Order' },
   },
   {
-    path: '/erp/orders/:id',
-    name: 'erp-orders-detail',
-    component: () => import('./views/order/OrderDetail.vue'),
+    path: '/erp/sale-orders/:id',
+    name: 'erp-sale-orders-detail',
+    component: () => import('./views/sale-order/SaleOrderDetail.vue'),
     meta: { requiresAuth: true, title: 'Order Detail' },
   },
   {
@@ -52,6 +52,6 @@ export const routes = [
 ]
 
 export const navChildren = [
-  { label: 'nav.salesOrder',     to: '/erp/orders',          icon: ShoppingCartIcon, permission: 'erp.orders.list' },
-  { label: 'nav.deliveryOrders', to: '/erp/delivery-orders', icon: TruckIcon,        permission: 'erp.orders.list' },
+  { label: 'nav.salesOrder',     to: '/erp/sale-orders',      icon: ShoppingCartIcon, permission: 'erp.orders.list' },
+  { label: 'nav.deliveryOrders', to: '/erp/delivery-orders',  icon: TruckIcon,        permission: 'erp.orders.list' },
 ]

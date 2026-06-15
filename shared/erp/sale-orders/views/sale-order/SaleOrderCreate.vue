@@ -2,9 +2,9 @@
   <AppLayout>
     <div class="space-y-5">
 
-      <PageHeader :title="t('erp.orders.new')" back-to="/erp/orders"
+      <PageHeader :title="t('erp.orders.new')" back-to="/erp/sale-orders"
         :breadcrumb="[
-          { label: 'Orders', to: '/erp/orders' },
+          { label: 'Orders', to: '/erp/sale-orders' },
           { label: 'Create' },
         ]">
         <template #badge>
@@ -13,7 +13,7 @@
         <template #actions>
           <KeyboardShortcuts :shortcuts="shortcuts" width="w-64" />
           <HeaderSaveActions
-            cancel-to="/erp/orders"
+            cancel-to="/erp/sale-orders"
             :cancel-label="t('common.cancel')"
             :saving="saving"
             :saving-label="t('erp.common.creating')"
@@ -1154,14 +1154,14 @@ async function save({ redirect = true } = {}) {
     }
     let data
     if (createdOrderId.value) {
-      ({ data } = await api.put(`/erp/orders/${createdOrderId.value}`, payload))
+      ({ data } = await api.put(`/erp/sale-orders/${createdOrderId.value}`, payload))
     } else {
-      ({ data } = await api.post('/erp/orders', payload))
+      ({ data } = await api.post('/erp/sale-orders', payload))
       createdOrderId.value = data.data.order.id
     }
     dirty.value = false
     if (redirect) {
-      router.push(`/erp/orders/${data.data.order.id}`)
+      router.push(`/erp/sale-orders/${data.data.order.id}`)
     } else {
       draftSavedAt.value = new Date()
     }
@@ -1196,6 +1196,6 @@ async function discard() {
     })
     if (!ok) return
   }
-  router.push('/erp/orders')
+  router.push('/erp/sale-orders')
 }
 </script>

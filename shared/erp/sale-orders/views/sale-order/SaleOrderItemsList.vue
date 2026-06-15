@@ -151,7 +151,7 @@ const columns = [
       const item = row.original
       return h('div', {}, [
         h(RouterLink, {
-          to: `/erp/orders/${item.order?.id}`,
+          to: `/erp/sale-orders/${item.order?.id}`,
           class: 'text-primary-500 hover:underline font-mono',
         }, () => item.order?.orderNumber),
         h('div', { class: 'text-[10px] text-[#9BA7B0]' }, item.order?.orderDate),
@@ -213,7 +213,7 @@ const columns = [
 async function fetchItems() {
   loading.value = true
   try {
-    const { data } = await api.get('/erp/orders/items', { params: { page: page.value, limit, search: search.value } })
+    const { data } = await api.get('/erp/sale-orders/items', { params: { page: page.value, limit, search: search.value } })
     items.value = data.data.items
     total.value  = data.data.total
   } finally {
@@ -263,7 +263,7 @@ async function saveEdit() {
   editModal.saving = true
   editModal.error  = ''
   try {
-    await api.put(`/erp/orders/items/${editModal.item.id}`, {
+    await api.put(`/erp/sale-orders/items/${editModal.item.id}`, {
       productId:   editForm.productId || null,
       productName: editForm.productName,
       quantity:    editForm.quantity,
@@ -289,7 +289,7 @@ async function doDelete() {
   deleteModal.saving = true
   deleteModal.error  = ''
   try {
-    await api.delete(`/erp/orders/items/${deleteModal.item.id}`)
+    await api.delete(`/erp/sale-orders/items/${deleteModal.item.id}`)
     deleteModal.open = false
     fetchItems()
   } catch (err) {

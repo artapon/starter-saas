@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="space-y-5">
 
@@ -38,7 +38,7 @@
           <!-- Source-doc badges -->
           <div v-if="invoice && !loading && (invoice.order || invoice.deliveryOrder)" class="flex items-center gap-1.5 mt-2 flex-wrap">
             <span class="text-[11px] text-[#9BA7B0] font-medium">{{ t('erp.common.source') }}:</span>
-            <RouterLink v-if="invoice.order" :to="`/erp/orders/${invoice.order.id}`"
+            <RouterLink v-if="invoice.order" :to="`/erp/sale-orders/${invoice.order.id}`"
               class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
               <ShoppingCartIcon class="w-3 h-3" /> {{ invoice.order.orderNumber }}
             </RouterLink>
