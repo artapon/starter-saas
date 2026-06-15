@@ -362,21 +362,25 @@
 
         <!-- Summary + totals -->
         <FormCard :title="t('erp.orders.orderSummary')" :icon="CalculatorIcon" icon-color="slate" :padded="false">
-          <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <FormField name="notes" :label="t('erp.orders.notes')" :errors="errors"
               v-model="form.notes" textarea placeholder="Order notes or special instructions…"
-              wrapper-class="flex flex-col text-left" input-class="resize-none flex-1 min-h-[10rem]" />
-            <dl class="w-full space-y-2.5">
-              <div class="flex items-center justify-between text-[13px]">
+              wrapper-class="flex flex-col text-left h-full" input-class="resize-none flex-1 min-h-[12rem]" />
+
+            <!-- Totals: bordered card with clear separators + a prominent total band -->
+            <dl class="w-full border border-[#E2E8F0] divide-y divide-[#E2E8F0] bg-white shadow-card">
+              <div class="flex items-center justify-between px-4 py-3 text-[13px]">
                 <dt class="text-[#637381]">{{ t('erp.orders.subtotal') }}</dt>
                 <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(subtotal) }}</dd>
               </div>
-              <div class="flex items-center justify-between text-[13px]">
-                <dt class="text-[#637381]">{{ t('erp.orders.vat') }}{{ form.vatRate ? ` (${form.vatRate}%)` : '' }}</dt>
+              <div class="flex items-center justify-between px-4 py-3 text-[13px]">
+                <dt class="text-[#637381]">
+                  {{ t('erp.orders.vat') }}<span v-if="form.vatRate" class="text-[#9BA7B0]"> · {{ form.vatRate }}%</span>
+                </dt>
                 <dd class="font-semibold text-[#1C2434] tabular-nums">{{ fmtMoney(taxAmount) }}</dd>
               </div>
               <!-- Discount input row -->
-              <div class="flex items-center justify-between text-[13px] gap-3">
+              <div class="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
                 <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.discount') }}</dt>
                 <div class="flex items-center gap-1.5">
                   <select v-model="form.discountType"
@@ -388,32 +392,34 @@
                   </select>
                   <input v-model.number="form.discountValue" type="number" min="0" step="0.01" placeholder="0"
                     :disabled="!form.discountType" :max="orderDiscountMax" @input="clampOrderDiscount"
-                    class="w-20 px-2 py-1.5 border border-[#E2E8F0] text-[12px] text-right tabular-nums
+                    class="w-16 px-2 py-1.5 border border-[#E2E8F0] text-[12px] text-right tabular-nums
                            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
                            disabled:bg-[#F7F9FC] disabled:text-[#9BA7B0]" />
-                  <span class="text-[13px] font-semibold text-red-600 tabular-nums w-20 text-right">−{{ fmtMoney(discountAmount) }}</span>
+                  <span class="text-[13px] font-semibold text-red-600 tabular-nums w-24 text-right">−{{ fmtMoney(discountAmount) }}</span>
                 </div>
               </div>
               <!-- Withholding tax (gated by ERP Settings → General → Tax) -->
-              <div v-if="settings.tax?.withholding" class="flex items-center justify-between text-[13px] gap-3">
+              <div v-if="settings.tax?.withholding" class="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
                 <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.wht') }}</dt>
                 <div class="flex items-center gap-1.5">
                   <select v-model="form.whtCode" @change="onWhtChange"
-                    class="max-w-[12rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                    class="max-w-[10rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
                            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
                     <option value="">—</option>
                     <option v-for="o in whtOptions" :key="o.id" :value="o.code">{{ o.name }} ({{ o.dataValue }}%)</option>
                   </select>
-                  <span class="text-[13px] font-semibold text-red-600 tabular-nums w-20 text-right">−{{ fmtMoney(whtAmount) }}</span>
+                  <span class="text-[13px] font-semibold text-red-600 tabular-nums w-24 text-right">−{{ fmtMoney(whtAmount) }}</span>
                 </div>
               </div>
-              <div class="flex items-center justify-between pt-2.5 border-t border-[#E2E8F0]">
-                <dt class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.total') }}</dt>
-                <dd class="text-base font-bold text-[#1C2434] tabular-nums">{{ fmtMoney(grandTotal) }}</dd>
+              <!-- Grand total — prominent primary band -->
+              <div class="flex items-center justify-between px-4 py-3.5 bg-primary-50">
+                <dt class="text-[12px] font-bold uppercase tracking-wider text-primary-700">{{ t('erp.orders.total') }}</dt>
+                <dd class="text-lg font-extrabold text-primary-700 tabular-nums">{{ fmtMoney(grandTotal) }}</dd>
               </div>
-              <div v-if="Number(whtAmount) > 0" class="flex items-center justify-between pt-2.5 border-t border-[#E2E8F0]">
-                <dt class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.netTotal') }}</dt>
-                <dd class="text-base font-bold text-primary-600 tabular-nums">{{ fmtMoney(netTotal) }}</dd>
+              <!-- Net payable after WHT — strongest emphasis -->
+              <div v-if="Number(whtAmount) > 0" class="flex items-center justify-between px-4 py-4 bg-primary-600">
+                <dt class="text-[12px] font-bold uppercase tracking-wider text-white/80">{{ t('erp.orders.netTotal') }}</dt>
+                <dd class="text-xl font-extrabold text-white tabular-nums">{{ fmtMoney(netTotal) }}</dd>
               </div>
             </dl>
           </div>
