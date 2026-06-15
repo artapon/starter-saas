@@ -362,10 +362,11 @@
 
         <!-- Summary + totals -->
         <FormCard :title="t('erp.orders.orderSummary')" :icon="CalculatorIcon" icon-color="slate" :padded="false">
-          <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             <FormField name="notes" :label="t('erp.orders.notes')" :errors="errors"
               v-model="form.notes" textarea placeholder="Order notes or special instructions…"
-              wrapper-class="flex flex-col text-left h-full" input-class="resize-none flex-1 min-h-[12rem]" />
+              wrapper-class="flex flex-col text-left h-full" field-wrapper-class="flex-1 flex flex-col min-h-0"
+              input-class="resize-none flex-1 min-h-[8rem]" />
 
             <!-- Totals: bordered card with clear separators + a prominent total band -->
             <dl class="w-full border border-[#E2E8F0] divide-y divide-[#E2E8F0] bg-white shadow-card">
@@ -403,7 +404,7 @@
                 <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.wht') }}</dt>
                 <div class="flex items-center gap-1.5">
                   <select v-model="form.whtCode" @change="onWhtChange"
-                    class="max-w-[10rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                    class="max-w-[20rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
                            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
                     <option value="">—</option>
                     <option v-for="o in whtOptions" :key="o.id" :value="o.code">{{ o.name }} ({{ o.dataValue }}%)</option>

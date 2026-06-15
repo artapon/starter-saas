@@ -368,10 +368,11 @@
 
         <!-- Summary + totals -->
         <FormCard :title="t('erp.orders.orderSummary')" :icon="CalculatorIcon" icon-color="slate" :padded="false">
-          <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             <FormField name="notes" :label="t('erp.orders.notes')" :errors="errors"
               v-model="form.notes" textarea placeholder="Order notes or special instructions…"
-              wrapper-class="flex flex-col text-left h-full" input-class="resize-none flex-1 min-h-[12rem]" />
+              wrapper-class="flex flex-col text-left h-full" field-wrapper-class="flex-1 flex flex-col min-h-0"
+              input-class="resize-none flex-1 min-h-[8rem]" />
 
             <!-- Totals: bordered card with clear separators + a prominent total band -->
             <dl class="w-full border border-[#E2E8F0] divide-y divide-[#E2E8F0] bg-white shadow-card">

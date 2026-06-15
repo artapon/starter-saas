@@ -5,7 +5,7 @@
       <span v-if="required" class="text-red-500 ml-0.5">*</span>
     </label>
 
-    <div class="relative">
+    <div class="relative" :class="fieldWrapperClass">
       <div v-if="$slots.prefix" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
         <slot name="prefix" />
       </div>
@@ -76,6 +76,9 @@ const props = defineProps({
   wrapperClass: { type: String, default: '' },
   labelClass:   { type: String, default: 'label' },
   inputClass:   { type: String, default: '' },
+  // Applied to the inner field wrapper (the div around the input/textarea).
+  // Use e.g. "flex-1 flex flex-col min-h-0" so a textarea can grow to fill height.
+  fieldWrapperClass: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'blur'])
