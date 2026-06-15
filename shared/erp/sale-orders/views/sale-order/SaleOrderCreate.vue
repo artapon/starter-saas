@@ -175,7 +175,7 @@
           <!-- Items table -->
           <div v-else>
             <div class="grid items-center gap-3 px-5 py-2.5 bg-[#F7F9FC] border-b border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 1.5rem 2rem">
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-center">#</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.saleItem') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.store') }}</div>
@@ -198,7 +198,7 @@
                   dragFromIdx === topLevelStart(idx) ? 'opacity-40' : '',
                   dragOverIdx === topLevelStart(idx) && dragFromIdx !== topLevelStart(idx) ? 'border-t-2 border-t-primary-500' : '',
                 ]"
-                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem"
+                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 1.5rem 2rem"
                 @dragover="onDragOver($event, idx)"
                 @drop="onDrop(idx)"
                 @dragleave="onDragLeave(idx)">
@@ -322,7 +322,7 @@
 
             <!-- Subtotal footer -->
             <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 4.5rem 6rem 4rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 1.5rem 2rem">
               <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
                 {{ t('erp.orders.subtotal') }}
               </div>
