@@ -116,8 +116,7 @@
             <div>
               <FieldLabel :text="t('erp.orders.vat')" />
               <select v-model.number="form.vatRate" class="input">
-                <option :value="0">— (0%)</option>
-                <option :value="7">7%</option>
+                <option v-for="r in vatRateOptions" :key="r" :value="r">{{ r === 0 ? '— (0%)' : `${r}%` }}</option>
               </select>
             </div>
 
@@ -621,6 +620,17 @@ watch(() => form.value.saleType, (st) => {
 })
 watch(() => form.value.vatRate, (rate) => {
   for (const line of form.value.items) line.taxRate = rate
+})
+// VAT options derive from ERP Settings → General → Tax: always "no VAT" (0%)
+// plus the configured rate. The loaded order's rate is kept selectable so an
+// existing value is never silently dropped if the setting later changes.
+const vatRateOptions = computed(() => {
+  const set = new Set([0])
+  const rate = Number(settings.tax?.rate) || 0
+  if (rate > 0) set.add(rate)
+  const current = Number(form.value.vatRate) || 0
+  if (current > 0) set.add(current)
+  return [...set].sort((a, b) => a - b)
 })
 
 // Dirty tracking: warn on tab close / Discard click after the user changes
