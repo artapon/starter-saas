@@ -27,6 +27,7 @@ export default {
       activeTo:     'Active To',
       source:       'Source',
       currency:     'Currency',
+      clear:        'Clear',
       batchId:      'Batch / Lot',
       batchPh:      'Batch #',
       expiryDate:   'Expiry',

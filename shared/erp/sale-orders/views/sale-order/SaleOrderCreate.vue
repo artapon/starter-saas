@@ -270,10 +270,17 @@
                   <div v-if="line.isPackage" class="flex items-center justify-center h-9">
                     <span class="text-[12px] text-[#CBD5E1]">—</span>
                   </div>
-                  <input v-else v-model.number="line.discountValue" type="number" min="0" max="100" step="0.01" placeholder="0"
-                    class="w-full px-2 py-2 border border-[#E2E8F0] text-[13px] text-right
-                           text-[#1C2434] tabular-nums focus:outline-none focus:ring-2
-                           focus:ring-primary-500/20 focus:border-primary-400 transition-all placeholder:text-[#CBD5E1]" />
+                  <LineDiscountPopover v-else
+                    :type="line.discountType"
+                    :value="line.discountValue"
+                    :base="lineGross(line)"
+                    :currency="form.currency || '฿'"
+                    :title="t('erp.orders.lineDiscount')"
+                    :percent-label="t('erp.orders.discountPercent')"
+                    :amount-label="t('erp.orders.discountAmount')"
+                    :clear-label="t('erp.common.clear')"
+                    @update:type="line.discountType = $event"
+                    @update:value="line.discountValue = $event" />
 
                   <div class="text-[13px] tabular-nums text-right"
                     :class="line.isPackage ? 'font-bold text-primary-700' : 'font-semibold text-[#1C2434]'">
@@ -526,6 +533,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import CurrencySelector from '@/components/CurrencySelector.vue'
 import SearchSelect from '@/components/SearchSelect.vue'
 import SearchSelectPopup from '@/components/SearchSelectPopup.vue'
+import LineDiscountPopover from '@/components/LineDiscountPopover.vue'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts.vue'
 import { useFormShortcuts } from '@/composables/useShortcuts'
 import PageHeader from '@/components/form/PageHeader.vue'
@@ -822,7 +830,7 @@ function addLine() {
   form.value.items.push({
     key: newKey(), parentKey: '', isPackage: false, salePackageId: '',
     saleItemId: '', storeId: '', hasProduct: false, productName: '',
-    quantity: 1, unitPrice: 0, taxRate: defaultTaxRate(), discountValue: 0,
+    quantity: 1, unitPrice: 0, taxRate: defaultTaxRate(), discountType: 'percent', discountValue: 0,
   })
 }
 
@@ -946,6 +954,7 @@ function makeLineFromSaleItem(si, parentKey = '') {
     quantity:      1,
     unitPrice:     pricing ? Number(pricing.unitPrice) : 0,
     taxRate:       defaultTaxRate(),
+    discountType:  'percent',
     discountValue: 0,
   }
 }
@@ -999,6 +1008,8 @@ async function linesFromPackage(packageId) {
       quantity:      1,
       unitPrice:     parentPrice,
       taxRate:       form.value.vatRate,
+      discountType:  'percent',
+      discountValue: 0,
     }
     return [parent, ...children]
   } catch {
@@ -1103,11 +1114,17 @@ function isDuplicate(line) {
   return !line.parentKey && !!line.saleItemId && duplicateSaleItemIds.value.has(line.saleItemId)
 }
 
+function lineGross(line) {
+  return (line.quantity || 0) * (line.unitPrice || 0)
+}
+function lineDiscountAmount(line) {
+  const gross = lineGross(line)
+  const v = Number(line.discountValue) || 0
+  return line.discountType === 'fixed' ? Math.min(v, gross) : gross * (v / 100)
+}
 function lineNet(line) {
   if (line.parentKey) return 0
-  const gross = (line.quantity || 0) * (line.unitPrice || 0)
-  const disc  = Number(line.discountValue) || 0
-  return gross * (1 - disc / 100)
+  return lineGross(line) - lineDiscountAmount(line)
 }
 function lineTax(line) {
   if (line.parentKey) return 0
@@ -1197,13 +1214,14 @@ async function save({ redirect = true } = {}) {
       ...form.value,
       discountType:  form.value.discountType  || null,
       discountValue: Number(form.value.discountValue) || 0,
-      items: form.value.items.map(({ key, parentKey, salePackageId, saleItemId, storeId, productName, quantity, unitPrice, taxRate, discountValue }) => ({
+      items: form.value.items.map(({ key, parentKey, salePackageId, saleItemId, storeId, productName, quantity, unitPrice, taxRate, discountType, discountValue }) => ({
         key, parentKey: parentKey || '',
         salePackageId: salePackageId || null,
         saleItemId:    saleItemId    || null,
         storeId:       storeId       || null,
         productName, quantity, unitPrice,
         taxRate:       Number(taxRate)       || 0,
+        discountType:  discountType === 'fixed' ? 'fixed' : 'percent',
         discountValue: Number(discountValue) || 0,
       })),
     }

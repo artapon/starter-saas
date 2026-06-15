@@ -71,6 +71,25 @@ const splitLineTax = (amount, rate, inclusive) => {
   return { net: toFixed(a, 2), tax, total: toFixed(a + Number(tax), 2) }
 }
 
+// A line discount is either a percentage of the line gross or a fixed amount
+// (capped at the gross so a line can't go negative).
+const lineDiscount = (lineGross, type, value) => {
+  const v = Number(value) || 0
+  return type === 'fixed'
+    ? toFixed(Math.min(v, lineGross), 2)
+    : toFixed(lineGross * (v / 100), 2)
+}
+
+// Express a stored line's discount as a percentage of its gross. Used when
+// handing items to the invoices module, which only models a percent line
+// discount — a fixed (amount) discount is converted so the invoice math matches.
+const lineDiscountAsPercent = (it) => {
+  if (it.discountType !== 'fixed') return Number(it.discountValue) || 0
+  const gross = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)
+  if (gross <= 0) return 0
+  return toFixed((Number(it.discountAmount) || 0) / gross * 100, 2)
+}
+
 // Compute per-line + order-level totals from incoming items.
 // Discount is applied as a flat reduction to the total (after tax), shown
 // as its own line in the summary — matches the "10% off your order" pattern.
@@ -79,12 +98,13 @@ const computeTotals = (items, { discountType, discountValue, taxInclusive = fals
     const qty      = Number(i.quantity)      || 0
     const price    = Number(i.unitPrice)     || 0
     const rate     = Number(i.taxRate)       || 0
-    const discPct  = Number(i.discountValue) || 0
+    const discType = i.discountType === 'fixed' ? 'fixed' : 'percent'
+    const discVal  = Number(i.discountValue) || 0
     const lineGross          = qty * price
-    const lineDiscountAmount = toFixed(lineGross * (discPct / 100), 2)
+    const lineDiscountAmount = lineDiscount(lineGross, discType, discVal)
     const lineAmount         = toFixed(lineGross - Number(lineDiscountAmount), 2)
     const { net, tax, total } = splitLineTax(lineAmount, rate, taxInclusive)
-    return { ...i, taxRate: rate, discountValue: discPct, discountAmount: lineDiscountAmount, taxAmount: tax, total, lineSubtotal: net }
+    return { ...i, taxRate: rate, discountType: discType, discountValue: discVal, discountAmount: lineDiscountAmount, taxAmount: tax, total, lineSubtotal: net }
   })
   const subtotal = lines.reduce((s, l) => s + Number(l.lineSubtotal), 0)
   const tax      = lines.reduce((s, l) => s + Number(l.taxAmount), 0)
@@ -129,6 +149,7 @@ const persistOrderItems = async ({ orderId, lines, organizationId, t }) => {
         unitPrice:      item.unitPrice,
         taxRate:        item.taxRate,
         taxAmount:      item.taxAmount,
+        discountType:   item.discountType === 'fixed' ? 'fixed' : 'percent',
         discountValue:  item.discountValue  || 0,
         discountAmount: item.discountAmount || 0,
         total:          item.total,
@@ -440,7 +461,7 @@ const recalcOrderTotals = async (orderId, t) => {
   await order.update({ subtotal: toFixed(subtotal, 2), tax: toFixed(tax, 2), total: toFixed(total, 2) }, { transaction: t })
 }
 
-const updateItem = async (id, { productId, productName, quantity, unitPrice, taxRate, discountValue }, organizationId, userId) => {
+const updateItem = async (id, { productId, productName, quantity, unitPrice, taxRate, discountType, discountValue }, organizationId, userId) => {
   const item = await findByPkScoped(SalesOrderItem, id, organizationId, {
     include: [{ model: Order, as: 'order', attributes: ['id', 'status'] }],
   })
@@ -461,9 +482,10 @@ const updateItem = async (id, { productId, productName, quantity, unitPrice, tax
     const qty      = quantity      ?? item.quantity
     const price    = unitPrice     ?? item.unitPrice
     const rate     = taxRate       ?? Number(item.taxRate || 0)
-    const discPct  = discountValue ?? Number(item.discountValue || 0)
+    const dType    = (discountType ?? item.discountType) === 'fixed' ? 'fixed' : 'percent'
+    const discVal  = discountValue ?? Number(item.discountValue || 0)
     const lineGross          = (Number(qty) || 0) * (Number(price) || 0)
-    const lineDiscountAmount = toFixed(lineGross * (Number(discPct) / 100), 2)
+    const lineDiscountAmount = lineDiscount(lineGross, dType, discVal)
     const lineAmount         = toFixed(lineGross - Number(lineDiscountAmount), 2)
     const { tax: taxAmount, total: lineTotal } = splitLineTax(lineAmount, rate, taxCfg.inclusive === true)
 
@@ -475,7 +497,8 @@ const updateItem = async (id, { productId, productName, quantity, unitPrice, tax
         unitPrice: price,
         taxRate: rate,
         taxAmount,
-        discountValue:  Number(discPct),
+        discountType:   dType,
+        discountValue:  Number(discVal),
         discountAmount: lineDiscountAmount,
         total: lineTotal,
       },
@@ -625,7 +648,9 @@ const createInvoice = async (id, userId, organizationId) => {
       quantity:      Number(it.quantity)      || 1,
       unitPrice:     Number(it.unitPrice)     || 0,
       taxRate:       Number(it.taxRate)       || 0,
-      discountValue: Number(it.discountValue) || 0,
+      // Invoices carry only a percentage line discount, so translate a fixed
+      // (amount) sale-order discount into its equivalent percent of the line.
+      discountValue: lineDiscountAsPercent(it),
     })),
     userId,
     organizationId,
