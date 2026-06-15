@@ -93,12 +93,6 @@
               </template>
             </FormField>
 
-            <!-- Currency -->
-            <div>
-              <FieldLabel :text="t('erp.common.currency')" />
-              <CurrencySelector v-model="form.currency" v-model:exchangeRate="form.exchangeRate" :as-of-date="form.orderDate" />
-            </div>
-
             <!-- Salesperson -->
             <div>
               <FieldLabel :text="t('erp.orders.salesperson')" />
@@ -117,6 +111,12 @@
                 </select>
               </template>
             </FormField>
+
+            <!-- Currency -->
+            <div>
+              <FieldLabel :text="t('erp.common.currency')" />
+              <CurrencySelector v-model="form.currency" v-model:exchangeRate="form.exchangeRate" :as-of-date="form.orderDate" />
+            </div>
 
           </div>
         </FormCard>
