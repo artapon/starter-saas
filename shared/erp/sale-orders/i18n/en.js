@@ -82,6 +82,7 @@ export default {
       newCustomer:       'New Customer',
       saveDraft:         'Save Draft',
       savedDraft:        'Draft saved',
+      dontSave:          "Don't save",
       unsavedChanges:    'You have unsaved changes',
       unsavedChangesHint:'Leave this page and discard your changes?',
       fillRequiredFields:'Fill in the required fields first',

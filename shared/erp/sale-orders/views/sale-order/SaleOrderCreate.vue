@@ -492,6 +492,10 @@
               {{ t('common.cancel') }}
               <kbd class="px-1 py-0.5 border border-[#E2E8F0] bg-white font-mono text-[10px] text-[#9BA7B0]">Esc</kbd>
             </button>
+            <button v-if="confirmSaveLabel" type="button" @click="confirmAnswer('save')"
+              class="px-4 py-2 text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 shadow-sm inline-flex items-center gap-1.5">
+              {{ confirmSaveLabel }}
+            </button>
             <button type="button" @click="confirmAnswer(true)"
               class="px-4 py-2 text-sm font-semibold bg-red-500 text-white hover:bg-red-600 shadow-sm inline-flex items-center gap-1.5">
               {{ confirmOkLabel }}
@@ -701,16 +705,19 @@ onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
 onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
 // ── Custom confirm modal (replaces window.confirm) ──────────────────────
-const confirmOpen     = ref(false)
-const confirmTitle    = ref('')
-const confirmMessage  = ref('')
-const confirmOkLabel  = ref('OK')
-let confirmResolver   = null
-function confirmAsync({ title, message, okLabel } = {}) {
-  confirmTitle.value   = title   || ''
-  confirmMessage.value = message || ''
-  confirmOkLabel.value = okLabel || 'OK'
-  confirmOpen.value    = true
+// Resolves with: false = stay, true = leave without saving, 'save' = save draft.
+const confirmOpen      = ref(false)
+const confirmTitle     = ref('')
+const confirmMessage   = ref('')
+const confirmOkLabel   = ref('OK')
+const confirmSaveLabel = ref('')
+let confirmResolver    = null
+function confirmAsync({ title, message, okLabel, saveLabel } = {}) {
+  confirmTitle.value     = title   || ''
+  confirmMessage.value   = message || ''
+  confirmOkLabel.value   = okLabel || 'OK'
+  confirmSaveLabel.value = saveLabel || ''
+  confirmOpen.value      = true
   return new Promise(resolve => { confirmResolver = resolve })
 }
 function confirmAnswer(ok) {
@@ -718,15 +725,25 @@ function confirmAnswer(ok) {
   if (confirmResolver) { confirmResolver(ok); confirmResolver = null }
 }
 
+// Save the draft from the unsaved-changes dialog, then report whether it stuck
+// (a failed validation leaves the form dirty, so we shouldn't leave the page).
+async function saveDraftAndLeave() {
+  await save({ redirect: false })
+  return !dirty.value
+}
+
 // Vue Router guard — covers in-app navigation (RouterLink in HeaderSaveActions,
 // breadcrumbs, sidebar clicks). beforeunload above handles tab close / reload.
 onBeforeRouteLeave(async () => {
   if (!dirty.value) return true
-  return await confirmAsync({
-    title:   t('erp.orders.unsavedChanges'),
-    message: t('erp.orders.unsavedChangesHint'),
-    okLabel: t('erp.orders.discard'),
+  const res = await confirmAsync({
+    title:     t('erp.orders.unsavedChanges'),
+    message:   t('erp.orders.unsavedChangesHint'),
+    okLabel:   t('erp.orders.dontSave'),
+    saveLabel: t('erp.orders.saveDraft'),
   })
+  if (res === 'save') return await saveDraftAndLeave()
+  return res === true
 })
 
 const selectedCustomer = computed(() =>
@@ -1397,12 +1414,14 @@ const savedAtRelative = computed(() => {
 
 async function discard() {
   if (dirty.value) {
-    const ok = await confirmAsync({
-      title:   t('erp.orders.unsavedChanges'),
-      message: t('erp.orders.unsavedChangesHint'),
-      okLabel: t('erp.orders.discard'),
+    const res = await confirmAsync({
+      title:     t('erp.orders.unsavedChanges'),
+      message:   t('erp.orders.unsavedChangesHint'),
+      okLabel:   t('erp.orders.dontSave'),
+      saveLabel: t('erp.orders.saveDraft'),
     })
-    if (!ok) return
+    if (res === false) return                              // stay
+    if (res === 'save' && !(await saveDraftAndLeave())) return  // save failed → stay
   }
   router.push('/erp/sale-orders')
 }
