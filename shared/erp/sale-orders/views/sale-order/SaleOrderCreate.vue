@@ -714,12 +714,18 @@ const confirmMessage   = ref('')
 const confirmOkLabel   = ref('OK')
 const confirmSaveLabel = ref('')
 let confirmResolver    = null
+// When Esc opens this dialog (via the form's cancel shortcut), the *same* keydown
+// would otherwise also reach the modal handler and immediately close it. Set this
+// for the rest of the current event loop tick so that opening keypress is ignored.
+let confirmJustOpened  = false
 function confirmAsync({ title, message, okLabel, saveLabel } = {}) {
   confirmTitle.value     = title   || ''
   confirmMessage.value   = message || ''
   confirmOkLabel.value   = okLabel || 'OK'
   confirmSaveLabel.value = saveLabel || ''
   confirmOpen.value      = true
+  confirmJustOpened      = true
+  setTimeout(() => { confirmJustOpened = false }, 0)
   return new Promise(resolve => { confirmResolver = resolve })
 }
 function confirmAnswer(ok) {
@@ -917,6 +923,7 @@ async function saveCustomer() {
 // separately so they take over while open (page shortcuts suppressed via `enabled`).
 function onModalKeydown(e) {
   if (confirmOpen.value) {
+    if (confirmJustOpened) return  // ignore the keypress that opened the dialog
     if (e.key === 'Enter')  { e.preventDefault(); confirmAnswer(confirmSaveLabel.value ? 'save' : true) }
     if (e.key === 'Escape') { e.preventDefault(); confirmAnswer(false) }
   } else if (customerCreateOpen.value && e.key === 'Escape') {
