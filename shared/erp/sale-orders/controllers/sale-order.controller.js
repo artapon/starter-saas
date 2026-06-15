@@ -86,7 +86,7 @@ module.exports = {
   async updateItem(req, res) {
     try {
       const orgId = req.user?.organizationId || req.user?.id
-      const item = await service.updateItem(req.params.itemId, req.body, orgId)
+      const item = await service.updateItem(req.params.itemId, req.body, orgId, req.user?.id)
       return ok(res, { item }, 'Order item updated')
     } catch (err) {
       return fail(res, err.message, err.status || 400)

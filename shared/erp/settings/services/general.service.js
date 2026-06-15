@@ -94,4 +94,11 @@ const getDefaultSaleType = async (userId) => {
   return settings.saleOrders?.defaultSaleType === 'cash' ? 'cash' : 'credit'
 }
 
-module.exports = { get, save, isAuditDebug, getDefaultSaleType, DEFAULTS }
+// Resolve the configured tax method (rate + inclusive/exclusive). The sale-order
+// service uses this so VAT is computed the same way the settings page describes.
+const getTaxConfig = async (userId) => {
+  const settings = await get(userId)
+  return { ...DEFAULTS.tax, ...settings.tax }
+}
+
+module.exports = { get, save, isAuditDebug, getDefaultSaleType, getTaxConfig, DEFAULTS }

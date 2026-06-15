@@ -55,10 +55,26 @@ const getById = async (id, organizationId) => {
   return json
 }
 
+// Split a line's discounted amount into net subtotal + VAT, honouring the tax
+// method from ERP Settings → General → Tax:
+//   exclusive (inclusive=false): `amount` is the net price, VAT added on top.
+//   inclusive (inclusive=true):  `amount` already includes VAT, which is then
+//                                extracted so the line total stays the entered price.
+const splitLineTax = (amount, rate, inclusive) => {
+  const a = Number(amount) || 0
+  const r = Number(rate)   || 0
+  if (inclusive && r > 0) {
+    const net = toFixed(a * 100 / (100 + r), 2)
+    return { net: Number(net), tax: toFixed(a - Number(net), 2), total: toFixed(a, 2) }
+  }
+  const tax = toFixed(a * (r / 100), 2)
+  return { net: toFixed(a, 2), tax, total: toFixed(a + Number(tax), 2) }
+}
+
 // Compute per-line + order-level totals from incoming items.
 // Discount is applied as a flat reduction to the total (after tax), shown
 // as its own line in the summary — matches the "10% off your order" pattern.
-const computeTotals = (items, { discountType, discountValue } = {}) => {
+const computeTotals = (items, { discountType, discountValue, taxInclusive = false } = {}) => {
   const lines = items.map((i) => {
     const qty      = Number(i.quantity)      || 0
     const price    = Number(i.unitPrice)     || 0
@@ -66,9 +82,9 @@ const computeTotals = (items, { discountType, discountValue } = {}) => {
     const discPct  = Number(i.discountValue) || 0
     const lineGross          = qty * price
     const lineDiscountAmount = toFixed(lineGross * (discPct / 100), 2)
-    const lineSubtotal       = toFixed(lineGross - Number(lineDiscountAmount), 2)
-    const taxAmount          = toFixed(Number(lineSubtotal) * (rate / 100), 2)
-    return { ...i, taxRate: rate, discountValue: discPct, discountAmount: lineDiscountAmount, taxAmount, total: toFixed(Number(lineSubtotal) + Number(taxAmount), 2), lineSubtotal }
+    const lineAmount         = toFixed(lineGross - Number(lineDiscountAmount), 2)
+    const { net, tax, total } = splitLineTax(lineAmount, rate, taxInclusive)
+    return { ...i, taxRate: rate, discountValue: discPct, discountAmount: lineDiscountAmount, taxAmount: tax, total, lineSubtotal: net }
   })
   const subtotal = lines.reduce((s, l) => s + Number(l.lineSubtotal), 0)
   const tax      = lines.reduce((s, l) => s + Number(l.taxAmount), 0)
@@ -134,7 +150,8 @@ const create = async ({
   if (!items.length) throw { status: 400, message: 'Order must have at least one item' }
 
   const orderNumber = await generateOrderNumber()
-  const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType, discountValue })
+  const taxCfg = await require('../../settings/services/general.service').getTaxConfig(userId)
+  const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType, discountValue, taxInclusive: taxCfg.inclusive === true })
   const fx = await require('../../settings/services/currency.service').getRateOn(currency, orderDate, organizationId)
   const resolvedRate = exchangeRate != null && Number(exchangeRate) > 0 ? Number(exchangeRate) : fx
   // Fall back to the org/user-configured default (ERP Settings → Sale Orders).
@@ -338,7 +355,8 @@ const update = async (id, payload, userId, organizationId) => {
       // Use the request's discount when provided, otherwise keep the current.
       const dType  = discountType  !== undefined ? (discountType  || null) : order.discountType
       const dValue = discountValue !== undefined ? (Number(discountValue) || 0) : Number(order.discountValue) || 0
-      const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType: dType, discountValue: dValue })
+      const taxCfg = await require('../../settings/services/general.service').getTaxConfig(userId)
+      const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType: dType, discountValue: dValue, taxInclusive: taxCfg.inclusive === true })
 
       await order.update({
         customerId: customerId || null, orderDate, notes,
@@ -412,11 +430,9 @@ const getItemById = async (id, organizationId) => {
 
 const recalcOrderTotals = async (orderId, t) => {
   const items = await SalesOrderItem.findAll({ where: { orderId }, transaction: t })
-  const subtotal = items.reduce((sum, i) => {
-    const gross = (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0)
-    const disc  = gross * ((Number(i.discountValue) || 0) / 100)
-    return sum + gross - disc
-  }, 0)
+  // Net subtotal is derived from each stored line (total − VAT) so this stays
+  // correct under both the inclusive and exclusive tax methods.
+  const subtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0) - (Number(i.taxAmount) || 0), 0)
   const tax   = items.reduce((sum, i) => sum + Number(i.taxAmount || 0), 0)
   const order = await Order.findByPk(orderId, { transaction: t })
   const disc  = Number(order.discountAmount) || 0
@@ -424,12 +440,14 @@ const recalcOrderTotals = async (orderId, t) => {
   await order.update({ subtotal: toFixed(subtotal, 2), tax: toFixed(tax, 2), total: toFixed(total, 2) }, { transaction: t })
 }
 
-const updateItem = async (id, { productId, productName, quantity, unitPrice, taxRate, discountValue }, organizationId) => {
+const updateItem = async (id, { productId, productName, quantity, unitPrice, taxRate, discountValue }, organizationId, userId) => {
   const item = await findByPkScoped(SalesOrderItem, id, organizationId, {
     include: [{ model: Order, as: 'order', attributes: ['id', 'status'] }],
   })
   if (!item) throw { status: 404, message: 'Order item not found' }
   if (item.order.status !== 'draft') throw { status: 400, message: 'Only items on draft orders can be edited' }
+
+  const taxCfg = await require('../../settings/services/general.service').getTaxConfig(userId)
 
   return sequelize.transaction(async (t) => {
     const resolvedProductId = productId || null
@@ -446,9 +464,8 @@ const updateItem = async (id, { productId, productName, quantity, unitPrice, tax
     const discPct  = discountValue ?? Number(item.discountValue || 0)
     const lineGross          = (Number(qty) || 0) * (Number(price) || 0)
     const lineDiscountAmount = toFixed(lineGross * (Number(discPct) / 100), 2)
-    const lineSubtotal       = toFixed(lineGross - Number(lineDiscountAmount), 2)
-    const taxAmount          = toFixed(Number(lineSubtotal) * (Number(rate) / 100), 2)
-    const lineTotal          = toFixed(Number(lineSubtotal) + Number(taxAmount), 2)
+    const lineAmount         = toFixed(lineGross - Number(lineDiscountAmount), 2)
+    const { tax: taxAmount, total: lineTotal } = splitLineTax(lineAmount, rate, taxCfg.inclusive === true)
 
     await item.update(
       {

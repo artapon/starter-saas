@@ -1140,16 +1140,29 @@ const itemsSubtitle = computed(() => {
   if (packages)   parts.push(`${packages} package${packages !== 1 ? 's' : ''}`)
   return parts.join(' · ')
 })
-const subtotal   = computed(() => form.value.items.reduce((s, i) => s + lineNet(i), 0))
-const taxAmount  = computed(() => toFixed(subtotal.value * (form.value.vatRate / 100), 2))
+// VAT method comes from ERP Settings → General → Tax. Exclusive: entered prices
+// are net and VAT is added on top. Inclusive: entered prices already include VAT,
+// which is extracted so the displayed total stays the entered amount.
+const taxInclusive = computed(() => settings.tax?.inclusive === true)
+const linesTotal = computed(() => form.value.items.reduce((s, i) => s + lineNet(i), 0))
+const taxAmount  = computed(() => {
+  const rate = Number(form.value.vatRate) || 0
+  if (!rate) return 0
+  return taxInclusive.value
+    ? toFixed(linesTotal.value * rate / (100 + rate), 2)
+    : toFixed(linesTotal.value * rate / 100, 2)
+})
+const subtotal   = computed(() => taxInclusive.value
+  ? toFixed(linesTotal.value - Number(taxAmount.value), 2)
+  : toFixed(linesTotal.value, 2))
 const discountAmount = computed(() => {
-  const gross = subtotal.value + Number(taxAmount.value)
+  const gross = Number(subtotal.value) + Number(taxAmount.value)
   const v = Number(form.value.discountValue) || 0
   if (form.value.discountType === 'percent') return toFixed(gross * v / 100, 2)
   if (form.value.discountType === 'fixed')   return toFixed(Math.min(v, gross), 2)
   return 0
 })
-const grandTotal = computed(() => subtotal.value + Number(taxAmount.value) - Number(discountAmount.value))
+const grandTotal = computed(() => Number(subtotal.value) + Number(taxAmount.value) - Number(discountAmount.value))
 
 const canSave = computed(() => {
   if (!form.value.customerId || !form.value.orderDate) return false
