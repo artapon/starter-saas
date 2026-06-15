@@ -77,8 +77,8 @@
               </template>
             </FormField>
 
-            <!-- Expected delivery date -->
-            <FormField name="expectedDeliveryDate" :label="t('erp.orders.expectedDelivery')" :errors="errors">
+            <!-- Expected delivery date — credit sales only -->
+            <FormField v-if="form.saleType === 'credit'" name="expectedDeliveryDate" :label="t('erp.orders.expectedDelivery')" :errors="errors">
               <template #default>
                 <DateInput v-model="form.expectedDeliveryDate" class="input" />
               </template>
@@ -620,8 +620,11 @@ const SALE_TYPE_OPTIONS = computed(() => [
   { value: 'cash',   label: t('erp.orders.saleTypeCash') },
   { value: 'credit', label: t('erp.orders.saleTypeCredit') },
 ])
-// Cash sales have no credit terms — clear any selected term when switching to cash.
-watch(() => form.value.saleType, (st) => { if (st === 'cash') form.value.paymentTerms = '' })
+// Cash sales settle immediately — no credit terms or expected delivery date.
+// Clear both when switching to cash so stale values aren't saved.
+watch(() => form.value.saleType, (st) => {
+  if (st === 'cash') { form.value.paymentTerms = ''; form.value.expectedDeliveryDate = '' }
+})
 
 // Dirty tracking: warn on tab close / Discard click after the user changes
 // anything. We arm the watcher once the existing order has loaded so the

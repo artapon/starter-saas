@@ -149,8 +149,8 @@ router.delete('/values/:id', requirePermission('erp.stock.edit'), async (req, re
 router.get('/by-name/:name', requirePermission('erp.stock.list'), async (req, res, next) => {
   try {
     const orgId = req.user?.organizationId || req.user?.id
-    const category = await MasterDataCategory.findOne({
-      where: { name: req.params.name, organizationId: orgId || null, dataFlag: { [Op.ne]: 2 } },
+    const byName = (organizationId) => MasterDataCategory.findOne({
+      where: { name: req.params.name, organizationId, dataFlag: { [Op.ne]: 2 } },
       include: [{
         model: MasterDataValue,
         as: 'values',
@@ -158,6 +158,8 @@ router.get('/by-name/:name', requirePermission('erp.stock.list'), async (req, re
         required: false,
       }],
     })
+    // Prefer an org-specific category; fall back to the global (system) one.
+    const category = (await byName(orgId || null)) || (orgId ? await byName(null) : null)
     if (!category) return res.json({ data: { values: [] } })
     const values = (category.values || []).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
     res.json({ data: { values } })
@@ -170,8 +172,8 @@ router.get('/by-name/:name', requirePermission('erp.stock.list'), async (req, re
 router.get('/:slug', requirePermission('erp.stock.list'), async (req, res, next) => {
   try {
     const orgId = req.user?.organizationId || req.user?.id
-    const category = await MasterDataCategory.findOne({
-      where: { slug: req.params.slug, organizationId: orgId || null, dataFlag: { [Op.ne]: 2 } },
+    const bySlug = (organizationId) => MasterDataCategory.findOne({
+      where: { slug: req.params.slug, organizationId, dataFlag: { [Op.ne]: 2 } },
       include: [{
         model: MasterDataValue,
         as: 'values',
@@ -180,6 +182,9 @@ router.get('/:slug', requirePermission('erp.stock.list'), async (req, res, next)
         order: [['sortOrder', 'ASC'], ['name', 'ASC']],
       }],
     })
+    // Prefer an org-specific category; fall back to the global (system) one
+    // seeded with organizationId = null so shared reference data is visible.
+    const category = (await bySlug(orgId || null)) || (orgId ? await bySlug(null) : null)
     if (!category) return res.json({ data: { category: null, values: [] } })
     const values = (category.values || []).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
     res.json({ data: { category, values } })
