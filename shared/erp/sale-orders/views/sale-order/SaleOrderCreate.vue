@@ -475,35 +475,35 @@
 
     <!-- Confirm dialog (replaces window.confirm) -->
     <Teleport to="body">
-      <div v-if="confirmOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
-        <div class="w-full max-w-sm bg-white shadow-2xl overflow-hidden">
-          <div class="px-5 py-4 flex items-start gap-3">
-            <div class="w-9 h-9 bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <ExclamationTriangleIcon class="w-5 h-5 text-amber-600" />
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0" enter-to-class="opacity-100"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="confirmOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-[#1C2434]/40 backdrop-blur-sm px-4"
+          @click.self="confirmAnswer(false)">
+          <div class="w-full max-w-md bg-white border border-[#E2E8F0] shadow-2xl">
+            <div class="px-6 pt-6 pb-5">
+              <h3 class="text-[15px] font-semibold text-[#1C2434]">{{ confirmTitle }}</h3>
+              <p v-if="confirmMessage" class="mt-2 text-[13px] text-[#637381] leading-relaxed">{{ confirmMessage }}</p>
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-[#1C2434]">{{ confirmTitle }}</p>
-              <p v-if="confirmMessage" class="mt-1 text-[12px] text-[#637381] leading-snug">{{ confirmMessage }}</p>
+            <div class="px-6 py-4 border-t border-[#E2E8F0] flex items-center justify-end gap-2">
+              <button type="button" @click="confirmAnswer(false)"
+                class="px-4 py-2 text-[13px] font-medium text-[#637381] hover:text-[#1C2434] hover:bg-[#F7F9FC] transition-colors">
+                {{ t('common.cancel') }}
+              </button>
+              <button type="button" @click="confirmAnswer(true)"
+                class="px-4 py-2 text-[13px] font-semibold text-[#637381] border border-[#E2E8F0] hover:text-red-600 hover:border-red-200 hover:bg-red-50/50 transition-colors">
+                {{ confirmOkLabel }}
+              </button>
+              <button v-if="confirmSaveLabel" type="button" @click="confirmAnswer('save')"
+                class="px-4 py-2 text-[13px] font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm transition-colors">
+                {{ confirmSaveLabel }}
+              </button>
             </div>
-          </div>
-          <div class="px-5 py-3 bg-[#F7F9FC] flex items-center justify-end gap-2">
-            <button type="button" @click="confirmAnswer(false)"
-              class="px-4 py-2 text-sm font-medium text-[#637381] hover:text-[#1C2434] inline-flex items-center gap-1.5">
-              {{ t('common.cancel') }}
-              <kbd class="px-1 py-0.5 border border-[#E2E8F0] bg-white font-mono text-[10px] text-[#9BA7B0]">Esc</kbd>
-            </button>
-            <button v-if="confirmSaveLabel" type="button" @click="confirmAnswer('save')"
-              class="px-4 py-2 text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 shadow-sm inline-flex items-center gap-1.5">
-              {{ confirmSaveLabel }}
-            </button>
-            <button type="button" @click="confirmAnswer(true)"
-              class="px-4 py-2 text-sm font-semibold bg-red-500 text-white hover:bg-red-600 shadow-sm inline-flex items-center gap-1.5">
-              {{ confirmOkLabel }}
-              <kbd class="px-1 py-0.5 border border-red-400 bg-red-600 font-mono text-[10px] text-red-100">Enter</kbd>
-            </button>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Inline customer create slide-over -->
@@ -915,7 +915,7 @@ async function saveCustomer() {
 // separately so they take over while open (page shortcuts suppressed via `enabled`).
 function onModalKeydown(e) {
   if (confirmOpen.value) {
-    if (e.key === 'Enter')  { e.preventDefault(); confirmAnswer(true) }
+    if (e.key === 'Enter')  { e.preventDefault(); confirmAnswer(confirmSaveLabel.value ? 'save' : true) }
     if (e.key === 'Escape') { e.preventDefault(); confirmAnswer(false) }
   } else if (customerCreateOpen.value && e.key === 'Escape') {
     e.preventDefault(); closeCustomerCreate()
