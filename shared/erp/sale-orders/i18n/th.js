@@ -43,6 +43,8 @@ export default {
       items:        'จำนวน',
       tax:          'ภาษี',
       vat:          'มูลค่า VAT',
+      wht:          'หัก ณ ที่จ่าย',
+      netTotal:     'ยอดชำระสุทธิ',
       total:        'ยอดสุทธิ',
       subtotal:     'มูลค่าก่อน VAT',
       createOrder:  'สร้างใบสั่ง',

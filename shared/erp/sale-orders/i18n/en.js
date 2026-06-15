@@ -43,6 +43,8 @@ export default {
       items:        'Items',
       tax:          'Tax',
       vat:          'VAT',
+      wht:          'WHT (หัก ณ ที่จ่าย)',
+      netTotal:     'Net Total',
       total:        'Total',
       subtotal:     'Subtotal',
       createOrder:  'Create Order',

@@ -67,7 +67,23 @@ const Order = sequelize.define('Order', {
   discountType:  { type: DataTypes.ENUM('percent', 'fixed'), allowNull: true , comment: 'Discount Type (ประเภทส่วนลด)'},
   discountValue: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 , comment: 'Discount Value (มูลค่าส่วนลด)'},
   discountAmount:{ type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 , comment: 'Discount Amount (จำนวนส่วนลด)'},
+
+  // Withholding tax (WHT / หัก ณ ที่จ่าย). The type is picked from the
+  // "WHT Type" master data; whtRate is its dataValue (%). whtAmount is withheld
+  // from the order total, so the net payable = total - whtAmount (see netTotal).
+  whtCode:        { type: DataTypes.STRING, allowNull: true , comment: 'WHT Type Code (รหัสภาษีหัก ณ ที่จ่าย)'},
+  whtRate:        { type: DataTypes.DECIMAL(5, 2),  allowNull: false, defaultValue: 0 , comment: 'WHT Rate (%) (อัตราภาษีหัก ณ ที่จ่าย)'},
+  whtAmount:      { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 , comment: 'WHT Amount (ภาษีหัก ณ ที่จ่าย)'},
   ...auditFields,
+
+  // Net payable after withholding tax: total - whtAmount.
+  netTotal: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return Number(this.getDataValue('total') || 0) - Number(this.getDataValue('whtAmount') || 0)
+    },
+    comment: 'Net Total (ยอดสุทธิหลังหัก ณ ที่จ่าย)',
+  },
 }, {
   indexes: [
     // Per-organization uniqueness on the document number (NULL organizationId distinct).

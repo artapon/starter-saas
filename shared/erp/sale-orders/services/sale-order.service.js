@@ -104,7 +104,7 @@ const lineDiscountAsPercent = (it) => {
 // Compute per-line + order-level totals from incoming items.
 // Discount is applied as a flat reduction to the total (after tax), shown
 // as its own line in the summary — matches the "10% off your order" pattern.
-const computeTotals = (items, { discountType, discountValue, taxInclusive = false } = {}) => {
+const computeTotals = (items, { discountType, discountValue, taxInclusive = false, whtRate } = {}) => {
   const lines = items.map((i) => {
     const qty      = Number(i.quantity)      || 0
     const price    = Number(i.unitPrice)     || 0
@@ -122,12 +122,21 @@ const computeTotals = (items, { discountType, discountValue, taxInclusive = fals
   const grossTotal = subtotal + tax
 
   const discountAmount = orderDiscount(grossTotal, discountType, discountValue)
+  const total = toFixed(grossTotal - Number(discountAmount), 2)
+
+  // Withholding tax is computed on the order amount (subtotal + tax) and
+  // withheld from the total, so net payable = total - whtAmount.
+  const wRate = Number(whtRate) || 0
+  const whtAmount = toFixed(grossTotal * wRate / 100, 2)
 
   return {
     subtotal: toFixed(subtotal, 2),
     tax: toFixed(tax, 2),
     discountAmount,
-    total: toFixed(grossTotal - Number(discountAmount), 2),
+    total,
+    whtRate: wRate,
+    whtAmount,
+    netTotal: toFixed(Number(total) - Number(whtAmount), 2),
     lines,
   }
 }
@@ -174,13 +183,14 @@ const create = async ({
   referenceNumber, expectedDeliveryDate, paymentTerms, salespersonId,
   shippingAddress, billingAddress,
   discountType, discountValue, saleType,
+  whtCode, whtRate,
   userId, organizationId,
 }) => {
   if (!items.length) throw { status: 400, message: 'Order must have at least one item' }
 
   const orderNumber = await generateOrderNumber()
   const taxCfg = await require('../../settings/services/general.service').getTaxConfig(userId)
-  const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType, discountValue, taxInclusive: taxCfg.inclusive === true })
+  const { subtotal, tax, total, discountAmount, whtAmount, lines } = computeTotals(items, { discountType, discountValue, taxInclusive: taxCfg.inclusive === true, whtRate })
   const fx = await require('../../settings/services/currency.service').getRateOn(currency, orderDate, organizationId)
   const resolvedRate = exchangeRate != null && Number(exchangeRate) > 0 ? Number(exchangeRate) : fx
   // Fall back to the org/user-configured default (ERP Settings → Sale Orders).
@@ -205,6 +215,9 @@ const create = async ({
         discountType:         discountType || null,
         discountValue:        Number(discountValue) || 0,
         discountAmount,
+        whtCode:              whtCode || null,
+        whtRate:              Number(whtRate) || 0,
+        whtAmount,
         organizationId: organizationId || null,
         createdBy: userId || null, modifiedBy: userId || null,
       },
@@ -355,6 +368,7 @@ const update = async (id, payload, userId, organizationId) => {
     referenceNumber, expectedDeliveryDate, paymentTerms, salespersonId,
     shippingAddress, billingAddress,
     discountType, discountValue, saleType,
+    whtCode, whtRate,
   } = payload || {}
 
   const order = await findByPkScoped(Order, id, organizationId)
@@ -376,36 +390,43 @@ const update = async (id, payload, userId, organizationId) => {
   if (shippingAddress      !== undefined) headerExtras.shippingAddress      = shippingAddress      || null
   if (billingAddress       !== undefined) headerExtras.billingAddress       = billingAddress       || null
   if (saleType === 'cash' || saleType === 'credit') headerExtras.saleType   = saleType
+  if (whtCode              !== undefined) headerExtras.whtCode              = whtCode              || null
 
   await sequelize.transaction(async (t) => {
     if (items) {
       await SalesOrderItem.destroy({ where: { orderId: id }, transaction: t })
 
-      // Use the request's discount when provided, otherwise keep the current.
+      // Use the request's discount/WHT when provided, otherwise keep the current.
       const dType  = discountType  !== undefined ? (discountType  || null) : order.discountType
       const dValue = discountValue !== undefined ? (Number(discountValue) || 0) : Number(order.discountValue) || 0
+      const wRate  = whtRate       !== undefined ? (Number(whtRate) || 0)     : Number(order.whtRate) || 0
       const taxCfg = await require('../../settings/services/general.service').getTaxConfig(userId)
-      const { subtotal, tax, total, discountAmount, lines } = computeTotals(items, { discountType: dType, discountValue: dValue, taxInclusive: taxCfg.inclusive === true })
+      const { subtotal, tax, total, discountAmount, whtAmount, lines } = computeTotals(items, { discountType: dType, discountValue: dValue, taxInclusive: taxCfg.inclusive === true, whtRate: wRate })
 
       await order.update({
         customerId: customerId || null, orderDate, notes,
         subtotal, tax, total,
         discountType: dType, discountValue: dValue, discountAmount,
+        whtRate: wRate, whtAmount,
         ...headerExtras, modifiedBy: userId || null,
       }, { transaction: t })
       await persistOrderItems({ orderId: id, lines, organizationId: order.organizationId, t })
     } else {
-      // No item change — still allow header-only updates including discount.
-      if (discountType !== undefined || discountValue !== undefined) {
+      // No item change — still allow header-only updates including discount + WHT.
+      if (discountType !== undefined || discountValue !== undefined || whtRate !== undefined) {
         const dType  = discountType  !== undefined ? (discountType  || null) : order.discountType
         const dValue = discountValue !== undefined ? (Number(discountValue) || 0) : Number(order.discountValue) || 0
+        const wRate  = whtRate       !== undefined ? (Number(whtRate) || 0)     : Number(order.whtRate) || 0
         const sub = Number(order.subtotal) || 0
         const tax = Number(order.tax) || 0
         const amt = orderDiscount(sub + tax, dType, dValue)
+        const tot = toFixed(sub + tax - Number(amt), 2)
         headerExtras.discountType   = dType
         headerExtras.discountValue  = dValue
         headerExtras.discountAmount = amt
-        headerExtras.total          = toFixed(sub + tax - Number(amt), 2)
+        headerExtras.total          = tot
+        headerExtras.whtRate        = wRate
+        headerExtras.whtAmount      = toFixed((sub + tax) * wRate / 100, 2)
       }
       await order.update({ customerId: customerId || null, orderDate, notes, ...headerExtras, modifiedBy: userId || null }, { transaction: t })
     }
@@ -639,6 +660,8 @@ const createInvoice = async (id, userId, organizationId) => {
     billingAddress:  order.billingAddress,
     discountType:    order.discountType,
     discountValue:   Number(order.discountValue) || 0,
+    whtCode:         order.whtCode || null,
+    whtRate:         Number(order.whtRate) || 0,
     items: ordered.map(it => ({
       key:           it.id,
       parentKey:     it.parentItemId || '',

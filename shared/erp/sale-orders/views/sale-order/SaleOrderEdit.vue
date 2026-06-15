@@ -399,9 +399,26 @@
                   <span class="text-[13px] font-semibold text-red-600 tabular-nums w-20 text-right">−{{ fmtMoney(discountAmount) }}</span>
                 </div>
               </div>
+              <!-- Withholding tax (gated by ERP Settings → General → Tax) -->
+              <div v-if="settings.tax?.withholding" class="flex items-center justify-between text-[13px] gap-3">
+                <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.wht') }}</dt>
+                <div class="flex items-center gap-1.5">
+                  <select v-model="form.whtCode" @change="onWhtChange"
+                    class="max-w-[12rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
+                    <option value="">—</option>
+                    <option v-for="o in whtOptions" :key="o.id" :value="o.code">{{ o.name }} ({{ o.dataValue }}%)</option>
+                  </select>
+                  <span class="text-[13px] font-semibold text-red-600 tabular-nums w-20 text-right">−{{ fmtMoney(whtAmount) }}</span>
+                </div>
+              </div>
               <div class="flex items-center justify-between pt-2.5 border-t border-[#E2E8F0]">
                 <dt class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.total') }}</dt>
                 <dd class="text-base font-bold text-[#1C2434] tabular-nums">{{ fmtMoney(grandTotal) }}</dd>
+              </div>
+              <div v-if="Number(whtAmount) > 0" class="flex items-center justify-between pt-2.5 border-t border-[#E2E8F0]">
+                <dt class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.netTotal') }}</dt>
+                <dd class="text-base font-bold text-primary-600 tabular-nums">{{ fmtMoney(netTotal) }}</dd>
               </div>
             </dl>
           </div>
@@ -619,8 +636,17 @@ const form = ref({
   vatRate: 0,
   shippingAddress: '', billingAddress: '',
   discountType: '', discountValue: 0,
+  whtCode: '', whtRate: 0,
   saleType: 'credit',
 })
+
+// WHT Type master data (code + name + dataValue rate%); admins manage it in
+// ERP Settings → Master Data. The WHT row is gated by the tax setting.
+const whtOptions = ref([])
+function onWhtChange() {
+  const o = whtOptions.value.find(x => x.code === form.value.whtCode)
+  form.value.whtRate = o ? Number(o.dataValue) || 0 : 0
+}
 
 const SALE_TYPE_OPTIONS = computed(() => [
   { value: 'cash',   label: t('erp.orders.saleTypeCash') },
@@ -771,7 +797,7 @@ function itemMetaFields(si) {
 
 onMounted(async () => {
   const id = route.params.id
-  const [orderRes, customersRes, saleItemsRes, salePackagesRes, storesRes, staffRes, paymentTermsRes] = await Promise.allSettled([
+  const [orderRes, customersRes, saleItemsRes, salePackagesRes, storesRes, staffRes, paymentTermsRes, whtRes] = await Promise.allSettled([
     api.get(`/erp/sale-orders/${id}`),
     api.get('/erp/customers',     { params: { limit: 200 } }),
     api.get('/erp/sale-items',    { params: { limit: 500, status: 'active' } }),
@@ -779,6 +805,7 @@ onMounted(async () => {
     api.get('/erp/stores',        { params: { limit: 200 } }),
     api.get('/organizations/staff'),
     api.get('/erp/master-data/payment-terms'),
+    api.get('/erp/master-data/by-name/WHT Type'),
   ])
   if (customersRes.status    === 'fulfilled') customers.value    = customersRes.value.data.data.customers
   if (saleItemsRes.status    === 'fulfilled') saleItems.value    = saleItemsRes.value.data.data.items
@@ -786,6 +813,7 @@ onMounted(async () => {
   if (storesRes.status       === 'fulfilled') stores.value       = storesRes.value.data.data.stores
   if (staffRes.status        === 'fulfilled') staff.value        = staffRes.value.data.data.staff
   if (paymentTermsRes.status === 'fulfilled') paymentTerms.value = paymentTermsRes.value.data.data.values || []
+  if (whtRes.status          === 'fulfilled') whtOptions.value   = whtRes.value.data.data.values || []
 
   if (orderRes.status !== 'fulfilled') {
     loadError.value = parseApiError(orderRes.reason, 'Failed to load order')
@@ -824,6 +852,8 @@ onMounted(async () => {
     billingAddress:       o.billingAddress       || '',
     discountType:         o.discountType         || '',
     discountValue:        Number(o.discountValue) || 0,
+    whtCode:              o.whtCode              || '',
+    whtRate:              Number(o.whtRate)      || 0,
     saleType:             o.saleType === 'cash' ? 'cash' : 'credit',
     items: (o.items || []).map(it => {
       const si = saleItems.value.find(s => s.id === it.saleItemId)
@@ -1253,6 +1283,10 @@ const discountAmount = computed(() => {
 })
 const grandTotal = computed(() => Number(subtotal.value) + Number(taxAmount.value) - Number(discountAmount.value))
 
+// WHT is computed on the order amount (subtotal + tax); net = total - WHT.
+const whtAmount = computed(() => toFixed((Number(subtotal.value) + Number(taxAmount.value)) * (Number(form.value.whtRate) || 0) / 100, 2))
+const netTotal  = computed(() => toFixed(Number(grandTotal.value) - Number(whtAmount.value), 2))
+
 // The order discount can't exceed the order total: percent ≤ 100, fixed ≤ gross.
 // Clamp on input and whenever the cap changes (type switch / totals change).
 const orderDiscountMax = computed(() =>
@@ -1334,6 +1368,8 @@ async function save({ redirect = true } = {}) {
       billingAddress:       form.value.billingAddress       || null,
       discountType:         form.value.discountType         || null,
       discountValue:        Number(form.value.discountValue) || 0,
+      whtCode:              form.value.whtCode              || null,
+      whtRate:              Number(form.value.whtRate)      || 0,
       saleType:             form.value.saleType,
       items: form.value.items.map(({ key, parentKey, salePackageId, saleItemId, storeId, productName, quantity, unitPrice, taxRate, discountType, discountValue }) => ({
         key, parentKey: parentKey || '',
