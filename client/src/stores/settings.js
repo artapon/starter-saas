@@ -31,6 +31,7 @@ const AUDIT_DEFAULTS = {
 
 const SALE_ORDERS_DEFAULTS = {
   defaultSaleType: 'credit',  // 'cash' = SO → DO → Receipt | 'credit' = SO → DO → Invoice
+  defaultStoreId:  '',        // pre-selected store for new product line items
 }
 
 export const useSettingsStore = defineStore('settings', () => {

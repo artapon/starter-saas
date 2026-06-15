@@ -27,6 +27,7 @@ const DEFAULTS = {
   },
   saleOrders: {
     defaultSaleType: 'credit',  // 'cash' = SO → DO → Receipt | 'credit' = SO → DO → Invoice
+    defaultStoreId:  '',        // pre-selected store for new product line items ('' = none)
   },
 }
 

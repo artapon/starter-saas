@@ -446,6 +446,17 @@
                 {{ saleOrdersForm.defaultSaleType === 'cash' ? t('erp.settings.saleTypeCashDesc') : t('erp.settings.saleTypeCreditDesc') }}
               </p>
             </div>
+
+            <div class="max-w-sm mt-6">
+              <label class="block text-xs font-semibold text-[#637381] uppercase tracking-wide mb-1.5">
+                {{ t('erp.settings.defaultLineStore') }}
+              </label>
+              <SearchSelect v-model="saleOrdersForm.defaultStoreId" :options="storeOptions" :placeholder="t('common.all') === 'All' ? '— None —' : '— ไม่ระบุ —'">
+                <template #option="{ option }">{{ option.name }}<span v-if="option.code" class="text-[#9BA7B0]"> · {{ option.code }}</span></template>
+                <template #singleLabel="{ option }">{{ option.name }}</template>
+              </SearchSelect>
+              <p class="mt-1.5 text-xs text-[#9BA7B0]">{{ t('erp.settings.defaultLineStoreDesc') }}</p>
+            </div>
           </div>
         </div>
 
@@ -483,6 +494,7 @@ import { CheckIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/vu
 import AppLayout from '@/layouts/AppLayout.vue'
 import SearchSelect from '@/components/SearchSelect.vue'
 import { useSettingsStore } from '@/stores/settings'
+import api from '@/api'
 import * as accounting from 'accounting-js'
 
 const { t } = useI18n()
@@ -673,7 +685,9 @@ async function saveAudit() {
 // ── Sale Orders form ──────────────────────────────────────
 const saleOrdersForm = reactive({
   defaultSaleType: store.saleOrders.defaultSaleType,
+  defaultStoreId:  store.saleOrders.defaultStoreId || '',
 })
+const storeOptions     = ref([])
 const saleOrdersSaving = ref(false)
 const saleOrdersSaved  = ref(false)
 const saleOrdersError  = ref('')
@@ -705,5 +719,11 @@ onMounted(async () => {
   })
   Object.assign(auditForm, store.audit)
   Object.assign(saleOrdersForm, store.saleOrders)
+
+  // Stores for the "default line items store" selector.
+  try {
+    const { data } = await api.get('/erp/stores', { params: { limit: 200 } })
+    storeOptions.value = data.data.stores || []
+  } catch { /* leave empty on failure */ }
 })
 </script>

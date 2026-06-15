@@ -172,15 +172,13 @@
           <!-- Items table -->
           <div v-else>
             <div class="grid items-center gap-3 px-5 py-2.5 bg-[#F7F9FC] border-b border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4.5rem 5.5rem 5.5rem 1.5rem 2rem">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 5.5rem 1.5rem 2rem">
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-center">#</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.saleItem') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.store') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.description') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.items') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.unitPrice') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.tax') }} %</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.tax') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.amount') }}</div>
               <div></div>
               <div></div>
@@ -197,7 +195,7 @@
                   dragFromIdx === topLevelStart(idx) ? 'opacity-40' : '',
                   dragOverIdx === topLevelStart(idx) && dragFromIdx !== topLevelStart(idx) ? 'border-t-2 border-t-primary-500' : '',
                 ]"
-                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4.5rem 5.5rem 5.5rem 1.5rem 2rem"
+                style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 5.5rem 1.5rem 2rem"
                 @dragover="onDragOver($event, idx)"
                 @drop="onDrop(idx)"
                 @dragleave="onDragLeave(idx)">
@@ -263,9 +261,9 @@
                          focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
                          transition-all placeholder:text-[#CBD5E1]" />
 
-                <!-- Quantity / Unit price / Tax % / Tax / Amount: priced on parents + standalone only -->
+                <!-- Quantity / Unit price / Amount: priced on parents + standalone only -->
                 <template v-if="line.parentKey">
-                  <div></div><div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div>
                 </template>
                 <template v-else>
                   <input v-model.number="line.quantity" type="number" min="1"
@@ -277,15 +275,6 @@
                     class="w-full px-2.5 py-2 border border-[#E2E8F0] text-[13px] text-right
                            text-[#1C2434] tabular-nums focus:outline-none focus:ring-2
                            focus:ring-primary-500/20 focus:border-primary-400 transition-all placeholder:text-[#CBD5E1]" />
-
-                  <input v-model.number="line.taxRate" type="number" min="0" max="100" step="0.01" placeholder="0"
-                    class="w-full px-2 py-2 border border-[#E2E8F0] text-[13px] text-right
-                           text-[#1C2434] tabular-nums focus:outline-none focus:ring-2
-                           focus:ring-primary-500/20 focus:border-primary-400 transition-all placeholder:text-[#CBD5E1]" />
-
-                  <div class="text-[13px] text-[#637381] tabular-nums text-right">
-                    {{ fmtMoney(lineTax(line)) }}
-                  </div>
 
                   <div class="text-[13px] tabular-nums text-right"
                     :class="line.isPackage ? 'font-bold text-primary-700' : 'font-semibold text-[#1C2434]'">
@@ -327,11 +316,10 @@
 
             <!-- Subtotal footer -->
             <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
-              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 4.5rem 5.5rem 5.5rem 1.5rem 2rem">
-              <div class="col-span-7 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
+              style="grid-template-columns: 1.8rem 2.5fr 1.4fr 2fr 4.5rem 6rem 5.5rem 1.5rem 2rem">
+              <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
                 {{ t('erp.orders.subtotal') }}
               </div>
-              <div class="text-[13px] font-semibold text-[#637381] tabular-nums text-right">{{ fmtMoney(taxAmount) }}</div>
               <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ fmtMoney(subtotal) }}</div>
               <div></div>
               <div></div>
@@ -802,6 +790,11 @@ function defaultTaxRate() {
   return Number(settings.tax?.rate) || 0
 }
 
+// Pre-selected store for new product lines (ERP Settings → Sale Orders).
+function defaultLineStore() {
+  return settings.saleOrders?.defaultStoreId || ''
+}
+
 // Stable per-row id so children can reference their parent before the server
 // assigns real UUIDs. Falls back to a counter-based id where crypto is missing.
 let _localKeyCounter = 0
@@ -933,7 +926,7 @@ function makeLineFromSaleItem(si, parentKey = '') {
     isPackage:     false,
     salePackageId: '',
     saleItemId:    si.id,
-    storeId:       '',
+    storeId:       si.productId ? defaultLineStore() : '',
     hasProduct:    !!si.productId,
     productName:   si.name,
     quantity:      1,
@@ -971,7 +964,7 @@ async function linesFromPackage(packageId) {
         isPackage:     false,
         salePackageId: '',
         saleItemId:    pi.saleItemId,
-        storeId:       '',
+        storeId:       hasProduct ? defaultLineStore() : '',
         hasProduct,
         productName:   si.name || 'Item',
         quantity:      childQty,
@@ -1049,6 +1042,7 @@ function onSaleItemChange(line) {
   line.productName = si.name
   line.hasProduct  = !!si.productId
   if (!line.hasProduct) line.storeId = ''
+  else if (!line.storeId) line.storeId = defaultLineStore()
   applyPricing(line)
 }
 
