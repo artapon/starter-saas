@@ -101,7 +101,7 @@
 
             <!-- Customer -->
             <ReadonlyField v-if="readonly" :label="t('erp.orders.customer')">
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-stretch gap-2 flex-wrap">
                 <CustomerChip v-if="selectedCustomer" :customer="selectedCustomer" />
                 <span v-else>—</span>
                 <CustomerArAgingAlert :customer-id="form.customerId" />
@@ -126,7 +126,7 @@
                 </button>
               </div>
               <FieldError :error="errors.customerId" />
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-stretch gap-2 flex-wrap">
                 <CustomerChip :customer="selectedCustomer" />
                 <CustomerArAgingAlert :customer-id="form.customerId" />
               </div>

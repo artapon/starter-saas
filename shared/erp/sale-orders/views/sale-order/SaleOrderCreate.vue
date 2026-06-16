@@ -69,7 +69,7 @@
                 </button>
               </div>
               <FieldError :error="errors.customerId" />
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-stretch gap-2 flex-wrap">
                 <CustomerChip :customer="selectedCustomer" />
                 <CustomerArAgingAlert :customer-id="form.customerId" />
               </div>

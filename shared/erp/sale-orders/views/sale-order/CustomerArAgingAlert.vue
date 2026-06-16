@@ -6,7 +6,7 @@
     type="button"
     @click="open = true"
     :title="t('erp.orders.arAlertTitle')"
-    class="relative inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-semibold
+    class="relative mt-2.5 self-stretch inline-flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold
            text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
     <ExclamationTriangleIcon class="w-4 h-4" />
     {{ t('erp.orders.arOutstanding') }}: {{ fmtMoney(aging.summary.total) }}
