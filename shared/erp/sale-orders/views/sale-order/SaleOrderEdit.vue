@@ -273,7 +273,7 @@
               <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-center">#</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider">{{ t('erp.orders.saleItem') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider">{{ t('erp.orders.store') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.items') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.colQty') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.unitPrice') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.lineDiscount') }}</div>
               <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.amount') }}</div>
