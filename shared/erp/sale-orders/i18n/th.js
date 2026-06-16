@@ -114,6 +114,18 @@ export default {
       arOutstanding:     'ค้างชำระ',
       arViewReport:      'ดูรายงานอายุลูกหนี้ทั้งหมด',
       arViewInvoice:     'เปิดใบแจ้งหนี้ในแท็บใหม่',
+
+      // ── ข้อความตัวอย่าง / คำแนะนำในช่องกรอก ─────────────────
+      selectCustomerPh:  '— เลือกลูกค้า —',
+      salespersonPh:     '— พนักงานขาย —',
+      referencePh:       'เช่น PO-2025-001',
+      shippingAddressPh: 'ที่อยู่จัดส่ง…',
+      billingAddressPh:  'ที่อยู่ใบกำกับ…',
+      customerNamePh:    'ชื่อลูกค้า',
+      itemPh:            '— รายการ —',
+      storePh:           '— คลัง —',
+      itemSearchPh:      'ค้นหาด้วยรหัสหรือชื่อ…',
+      addItemsHint:      'เพิ่มสินค้าหรือบริการในใบสั่งนี้',
       arAsOf:            'ณ วันที่',
       arDaysOverdue:     'เกินกำหนด {days} วัน',
       arNotOverdue:      'ยังไม่ครบกำหนด',

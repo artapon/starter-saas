@@ -54,7 +54,7 @@
               <FieldLabel :text="t('erp.orders.customer')" required />
               <div class="flex gap-2 items-start">
                 <div class="flex-1 min-w-0">
-                  <SearchSelect v-model="form.customerId" :options="customers" :invalid="!!errors.customerId" placeholder="— Select customer —">
+                  <SearchSelect v-model="form.customerId" :options="customers" :invalid="!!errors.customerId" :placeholder="t('erp.orders.selectCustomerPh')">
                     <template #option="{ option }">{{ option.name }}<span v-if="option.company" class="text-[#9BA7B0]"> · {{ option.company }}</span></template>
                     <template #singleLabel="{ option }">{{ option.name }}<span v-if="option.company" class="text-[#9BA7B0]"> · {{ option.company }}</span></template>
                   </SearchSelect>
@@ -79,7 +79,7 @@
             <FormField name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors" label-class="label-xs">
               <template #default="{ id }">
                 <input :id="id" ref="referenceInputRef" v-model="form.referenceNumber" type="text"
-                  placeholder="e.g. PO-2025-001" class="input" />
+                  :placeholder="t('erp.orders.referencePh')" class="input" />
               </template>
             </FormField>
 
@@ -93,7 +93,7 @@
             <!-- Salesperson -->
             <div>
               <FieldLabel :text="t('erp.orders.salesperson')" />
-              <SearchSelect v-model="form.salespersonId" :options="staff" placeholder="— Salesperson —">
+              <SearchSelect v-model="form.salespersonId" :options="staff" :placeholder="t('erp.orders.salespersonPh')">
                 <template #option="{ option }">{{ option.name }}<span v-if="option.email" class="text-[#9BA7B0]"> · {{ option.email }}</span></template>
                 <template #singleLabel="{ option }">{{ option.name }}</template>
               </SearchSelect>
@@ -140,7 +140,7 @@
           </template>
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <FormField name="shippingAddress" :label="t('erp.orders.shippingAddress')" :errors="errors"
-              v-model="form.shippingAddress" textarea :rows="3" placeholder="Ship to address…"
+              v-model="form.shippingAddress" textarea :rows="3" :placeholder="t('erp.orders.shippingAddressPh')"
               input-class="resize-none" label-class="label-xs" />
             <div>
               <div class="flex items-center justify-between">
@@ -151,7 +151,7 @@
                 </label>
               </div>
               <textarea v-model="form.billingAddress" rows="3" :disabled="billingSameAsShipping"
-                placeholder="Bill to address…"
+                :placeholder="t('erp.orders.billingAddressPh')"
                 class="input resize-none disabled:bg-[#F7F9FC] disabled:text-[#9BA7B0]" />
             </div>
           </div>
@@ -194,7 +194,7 @@
           <!-- Line Items tab -->
           <div v-show="activeTab === 'items'">
           <!-- Empty state -->
-          <EmptyState v-if="!form.items.length" :icon="ShoppingCartIcon" :title="t('erp.common.noItems')" subtitle="Add products or services to this order" :action-label="t('erp.orders.addFirstItem')" :error-message="errors.items" @action="openBulkPicker" />
+          <EmptyState v-if="!form.items.length" :icon="ShoppingCartIcon" :title="t('erp.common.noItems')" :subtitle="t('erp.orders.addItemsHint')" :action-label="t('erp.orders.addFirstItem')" :error-message="errors.items" @action="openBulkPicker" />
 
           <!-- Items table -->
           <div v-else>
@@ -265,14 +265,14 @@
                   group-label="label"
                   :meta-columns="itemMetaColumns"
                   :label-header="t('erp.orders.saleItem')"
-                  placeholder="— Item —"
-                  search-placeholder="Search by code or name…"
+                  :placeholder="t('erp.orders.itemPh')"
+                  :search-placeholder="t('erp.orders.itemSearchPh')"
                   @change="onPickerChange(line, idx)"
                 />
 
                 <!-- Store -->
                 <div>
-                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" @change="clampLineQty(line)" />
+                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :invalid="line.hasProduct && !line.storeId" :placeholder="t('erp.orders.storePh')" @change="clampLineQty(line)" />
                   <div v-else class="flex items-center justify-center h-9">
                     <span class="text-[12px] text-[#CBD5E1]">—</span>
                   </div>
@@ -379,7 +379,7 @@
             :label-header="t('erp.orders.saleItem')"
             multiple
             hide-trigger
-            search-placeholder="Search by code or name…"
+            :search-placeholder="t('erp.orders.itemSearchPh')"
             @submit="onBulkAdd"
           />
           </div>
@@ -554,7 +554,7 @@
             <FormField name="customerName" :label="t('erp.customers.name')" :errors="{}" required>
               <template #default="{ id }">
                 <input :id="id" v-model="newCustomer.name" ref="newCustomerNameRef" type="text"
-                  placeholder="Customer name" class="input" />
+                  :placeholder="t('erp.orders.customerNamePh')" class="input" />
               </template>
             </FormField>
             <FormField name="customerCompany" :label="t('erp.customers.company')" :errors="{}"

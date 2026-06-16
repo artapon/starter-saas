@@ -114,6 +114,18 @@ export default {
       arOutstanding:     'Outstanding',
       arViewReport:      'View full AR aging report',
       arViewInvoice:     'Open invoice in a new tab',
+
+      // ── Field placeholders / hints ─────────────────────────
+      selectCustomerPh:  '— Select customer —',
+      salespersonPh:     '— Salesperson —',
+      referencePh:       'e.g. PO-2025-001',
+      shippingAddressPh: 'Ship to address…',
+      billingAddressPh:  'Bill to address…',
+      customerNamePh:    'Customer name',
+      itemPh:            '— Item —',
+      storePh:           '— Store —',
+      itemSearchPh:      'Search by code or name…',
+      addItemsHint:      'Add products or services to this order',
       arAsOf:            'As of',
       arDaysOverdue:     '{days}d overdue',
       arNotOverdue:      'Not yet due',

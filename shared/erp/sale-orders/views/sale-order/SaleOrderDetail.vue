@@ -53,7 +53,7 @@
             {{ t('common.edit') }}
           </RouterLink>
           <button v-if="order.status === 'draft'" v-can="'erp.orders.delete'" @click="confirmDelete" type="button"
-            :title="`Delete (Del)`"
+            :title="`${t('common.delete')} (Del)`"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold
                    text-red-600 bg-white border border-red-200 hover:bg-red-50 transition-colors">
             <TrashIcon class="w-4 h-4" />
@@ -76,28 +76,8 @@
       </div>
 
       <template v-else>
-        <!-- Compact workflow strip (hidden on print) -->
-        <div class="bg-white border border-[#E2E8F0] shadow-card px-5 py-3 print:hidden">
-          <div class="flex items-center gap-1 flex-wrap">
-            <template v-for="(step, i) in FLOW_STEPS" :key="step.key">
-              <div class="flex items-center gap-2 px-2.5 py-1"
-                :class="stepChipClass(step.key)">
-                <CheckIcon v-if="stepState(step.key) === 'completed'" class="w-3.5 h-3.5" />
-                <span v-else-if="stepState(step.key) === 'current'" class="w-2 h-2 bg-current"></span>
-                <span v-else class="text-[10px] font-bold opacity-50">{{ i + 1 }}</span>
-                <span class="text-[12px] font-semibold">{{ step.label }}</span>
-              </div>
-              <ChevronRightIcon v-if="i < FLOW_STEPS.length - 1" class="w-3 h-3 text-[#CBD5E1] flex-shrink-0" />
-            </template>
-            <span v-if="isCancelled" class="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600">
-              <XMarkIcon class="w-3.5 h-3.5" />
-              <span class="text-[12px] font-semibold">Cancelled</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- Workflow next-actions (status transitions + convert to delivery
-             order) now live on the editor/view page; this page is print-only. -->
+        <!-- Workflow progress strip + next-actions now live on the editor; this
+             page is the print-only document view. -->
 
         <p v-if="statusError" class="text-xs text-red-600 print:hidden">{{ statusError }}</p>
 
@@ -147,14 +127,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import DocCurrencyBadge from '@/components/DocCurrencyBadge.vue'
 import {
   ArrowLeftIcon, ChevronRightIcon,
-  CheckIcon, XMarkIcon, TrashIcon, PencilSquareIcon,
+  TrashIcon, PencilSquareIcon,
   ExclamationCircleIcon, PrinterIcon,
 } from '@heroicons/vue/24/outline'
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -208,37 +188,6 @@ function confirmAnswer(ok) {
 }
 
 function onPrint() { window.print() }
-
-// ── Workflow progress strip (status transitions themselves moved to the
-// editor/view page) ───────────────────────────────────────
-const FLOW_STEPS = [
-  { key: 'draft',     label: 'Draft' },
-  { key: 'confirmed', label: 'Confirmed' },
-  { key: 'shipped',   label: 'Shipped' },
-  { key: 'delivered', label: 'Delivered' },
-]
-
-const COMPLETED_BEFORE = {
-  draft:     [],
-  confirmed: ['draft'],
-  shipped:   ['draft', 'confirmed'],
-  delivered: ['draft', 'confirmed', 'shipped'],
-  cancelled: [],
-}
-
-const isCancelled = computed(() => order.value?.status === 'cancelled')
-
-function stepState(key) {
-  const cur = order.value?.status
-  if (!cur || cur === key) return cur === key ? 'current' : 'upcoming'
-  return (COMPLETED_BEFORE[cur] || []).includes(key) ? 'completed' : 'upcoming'
-}
-function stepChipClass(key) {
-  const s = stepState(key)
-  if (s === 'completed') return 'bg-green-50 text-green-700'
-  if (s === 'current')   return 'bg-primary-50 text-primary-700 ring-1 ring-primary-200'
-  return 'bg-[#F7F9FC] text-[#9BA7B0]'
-}
 
 // ── Status badge ──────────────────────────────────────────
 const STATUS_BADGE = {
