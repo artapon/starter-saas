@@ -3,7 +3,7 @@
     <div class="space-y-5">
 
       <PageHeader :title="loading ? t('erp.orders.editOrder') : (order?.orderNumber || t('erp.orders.editOrder'))"
-        :back-to="`/erp/sale-orders/${route.params.id}`"
+        back-to="/erp/sale-orders"
         :breadcrumb="[
           { label: 'Orders', to: '/erp/sale-orders' },
           { label: order?.orderNumber || '…', to: `/erp/sale-orders/${route.params.id}` },
@@ -22,7 +22,7 @@
             {{ t('erp.orders.previewPrint') }}
           </RouterLink>
           <HeaderSaveActions
-            :cancel-to="`/erp/sale-orders/${route.params.id}`"
+            cancel-to="/erp/sale-orders"
             :cancel-label="t('common.cancel')"
             :saving="saving"
             :saving-label="t('erp.common.saving')"
@@ -1481,7 +1481,7 @@ async function discard() {
     if (res === false) return                              // stay
     if (res === 'save' && !(await saveDraftAndLeave())) return  // save failed → stay
   }
-  router.push(`/erp/sale-orders/${route.params.id}`)
+  router.push('/erp/sale-orders')
 }
 
 // "12s ago" / "2m ago" hint next to the Saved indicator.
