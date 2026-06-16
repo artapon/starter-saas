@@ -122,4 +122,14 @@ module.exports = {
       return fail(res, err.message, err.status || 400)
     }
   },
+
+  async listJournals(req, res) {
+    try {
+      const orgId = req.user?.organizationId || req.user?.id
+      const result = await service.listJournals(req.params.id, orgId)
+      return ok(res, result)
+    } catch (err) {
+      return fail(res, err.message, err.status || 400)
+    }
+  },
 }

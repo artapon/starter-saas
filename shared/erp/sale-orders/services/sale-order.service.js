@@ -687,4 +687,53 @@ const createInvoice = async (id, userId, organizationId) => {
   return { id: invoice.id }
 }
 
-module.exports = { list, getById, create, update, updateStatus, remove, listItems, getItemById, updateItem, deleteItem, createDeliveryOrder, createInvoice }
+// ── Related journal entries ────────────────────────────────────────────────
+// A sale order never posts to the GL itself — its downstream documents do.
+// Walk Order → Invoice(s) → Receipt(s) and gather every journal whose source
+// is one of those documents. Matching purely on sourceId catches the revenue
+// (Invoice), cost-of-sales (Invoice.cogs), payment (Receipt) entries and any
+// of their reversals, without having to enumerate sourceType strings.
+const listJournals = async (orderId, organizationId) => {
+  const { Invoice, Receipt, Journal, JournalLine, ChartOfAccount } = require('../../../../server/models')
+
+  // Confirm the order is in tenant scope before exposing anything.
+  const order = await findByPkScoped(Order, orderId, organizationId, { attributes: ['id'] })
+  if (!order) throw { status: 404, message: 'Order not found' }
+
+  const live = { dataFlag: { [Op.ne]: 2 } }
+  const invoices = await Invoice.findAll({ where: { orderId, ...live }, attributes: ['id', 'invoiceNumber'] })
+  const invoiceIds = invoices.map(i => i.id)
+
+  const receipts = invoiceIds.length
+    ? await Receipt.findAll({ where: { invoiceId: { [Op.in]: invoiceIds }, ...live }, attributes: ['id', 'receiptNumber'] })
+    : []
+  const receiptIds = receipts.map(r => r.id)
+
+  const sourceIds = [...invoiceIds, ...receiptIds]
+  if (!sourceIds.length) return { journals: [] }
+
+  const journals = await Journal.findAll({
+    where: { sourceId: { [Op.in]: sourceIds }, ...live },
+    include: [{
+      model: JournalLine, as: 'lines',
+      include: [{ model: ChartOfAccount, as: 'account', attributes: ['id', 'code', 'name'] }],
+    }],
+    order: [['date', 'ASC'], ['createdAt', 'ASC']],
+  })
+
+  // Friendly source label, e.g. "Invoice INV-00012" / "Receipt RC-00007".
+  const labelById = {}
+  for (const i of invoices) labelById[i.id] = `Invoice ${i.invoiceNumber}`
+  for (const r of receipts) labelById[r.id] = `Receipt ${r.receiptNumber}`
+
+  return {
+    journals: journals.map(j => {
+      const json = j.toJSON()
+      json.sourceLabel = labelById[j.sourceId] || j.sourceType || ''
+      json.lines = (json.lines || []).sort((a, b) => (a.lineNo || 0) - (b.lineNo || 0))
+      return json
+    }),
+  }
+}
+
+module.exports = { list, getById, create, update, updateStatus, remove, listItems, getItemById, updateItem, deleteItem, createDeliveryOrder, createInvoice, listJournals }

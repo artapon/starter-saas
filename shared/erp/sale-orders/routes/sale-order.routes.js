@@ -15,6 +15,7 @@ router.get('/items/:itemId',     requirePermission('erp.orders.list'),   (req, r
 router.put('/items/:itemId',     requirePermission('erp.orders.edit'),   (req, res) => controller.updateItem(req, res))
 router.delete('/items/:itemId',  requirePermission('erp.orders.delete'), (req, res) => controller.deleteItem(req, res))
 router.get('/:id',               requirePermission('erp.orders.list'),   (req, res) => controller.getById(req, res))
+router.get('/:id/journals',      requirePermission('erp.orders.list'),   (req, res) => controller.listJournals(req, res))
 router.post('/',           requirePermission('erp.orders.edit'),   itemsRules, validate, (req, res) => controller.create(req, res))
 router.put('/:id',         requirePermission('erp.orders.edit'),   (req, res) => controller.update(req, res))
 router.patch('/:id/status',requirePermission('erp.orders.edit'),   statusRules, validate, (req, res) => controller.updateStatus(req, res))
