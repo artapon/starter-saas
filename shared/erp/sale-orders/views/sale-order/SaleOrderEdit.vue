@@ -7,10 +7,12 @@
         :breadcrumb="[
           { label: 'Orders', to: '/erp/sale-orders' },
           { label: order?.orderNumber || '…', to: `/erp/sale-orders/${route.params.id}` },
-          { label: t('common.edit') },
+          { label: readonly ? t('common.view') : t('common.edit') },
         ]">
         <template #badge>
-          <StatusPill :label="t('erp.orders.draft')" />
+          <StatusPill
+            :label="readonly ? t('erp.orders.' + order.status) : t('erp.orders.draft')"
+            :variant="readonly ? (STATUS_VARIANT[order.status] || 'neutral') : 'draft'" />
         </template>
         <template #actions>
           <KeyboardShortcuts :shortcuts="shortcuts" width="w-64" />
@@ -22,6 +24,7 @@
             {{ t('erp.orders.previewPrint') }}
           </RouterLink>
           <HeaderSaveActions
+            v-if="!readonly"
             cancel-to="/erp/sale-orders"
             :cancel-label="t('common.cancel')"
             :saving="saving"
@@ -39,8 +42,9 @@
       <!-- Not found / not draft -->
       <ErrorBanner v-else-if="loadError" :message="loadError" />
 
-      <!-- Sections -->
-      <div v-else class="space-y-5" @focusin="scrollFocused">
+      <!-- Sections. A disabled fieldset turns the whole form read-only for
+           non-draft orders (custom multiselects get :disabled passed explicitly). -->
+      <fieldset v-else :disabled="readonly" class="space-y-5 min-w-0 border-0 p-0 m-0" @focusin="scrollFocused">
 
         <!-- Customer & Order Info -->
         <FormCard :title="t('erp.orders.customerInfo')" :icon="UserIcon" icon-color="primary" :padded="false">
@@ -67,7 +71,7 @@
               <FieldLabel :text="t('erp.orders.customer')" required />
               <div class="flex gap-2 items-start">
                 <div class="flex-1 min-w-0 customer-field">
-                  <SearchSelect v-model="form.customerId" :options="customers" :invalid="!!errors.customerId" placeholder="— Select customer —">
+                  <SearchSelect v-model="form.customerId" :options="customers" :disabled="readonly" :invalid="!!errors.customerId" placeholder="— Select customer —">
                     <template #option="{ option }">{{ option.name }}<span v-if="option.company" class="text-[#9BA7B0]"> · {{ option.company }}</span></template>
                     <template #singleLabel="{ option }">{{ option.name }}<span v-if="option.company" class="text-[#9BA7B0]"> · {{ option.company }}</span></template>
                   </SearchSelect>
@@ -103,7 +107,7 @@
             <!-- Salesperson -->
             <div>
               <FieldLabel :text="t('erp.orders.salesperson')" />
-              <SearchSelect v-model="form.salespersonId" :options="staff" placeholder="— Salesperson —">
+              <SearchSelect v-model="form.salespersonId" :options="staff" :disabled="readonly" placeholder="— Salesperson —">
                 <template #option="{ option }">{{ option.name }}<span v-if="option.email" class="text-[#9BA7B0]"> · {{ option.email }}</span></template>
                 <template #singleLabel="{ option }">{{ option.name }}</template>
               </SearchSelect>
@@ -130,7 +134,7 @@
             <!-- Currency -->
             <div>
               <FieldLabel :text="t('erp.common.currency')" />
-              <CurrencySelector v-model="form.currency" v-model:exchangeRate="form.exchangeRate" :as-of-date="form.orderDate" />
+              <CurrencySelector v-model="form.currency" v-model:exchangeRate="form.exchangeRate" :as-of-date="form.orderDate" :disabled="readonly" />
             </div>
 
           </div>
@@ -282,7 +286,7 @@
 
                 <!-- Store -->
                 <div>
-                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" @change="clampLineQty(line)" />
+                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :disabled="readonly" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" @change="clampLineQty(line)" />
                   <div v-else class="flex items-center justify-center h-9">
                     <span class="text-[12px] text-[#CBD5E1]">—</span>
                   </div>
@@ -467,7 +471,7 @@
           </div>
         </FormCard>
 
-      </div>
+      </fieldset>
     </div>
 
     <!-- Sticky save bar -->
@@ -488,7 +492,19 @@
           {{ t('erp.orders.unsavedChanges') }}
         </span>
       </div>
-      <div class="flex items-center gap-2.5">
+      <!-- Read-only orders cannot be saved — only a way back to the list. -->
+      <div v-if="readonly" class="flex items-center gap-3">
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-[12px] font-medium text-[#637381]">
+          <LockClosedIcon class="w-3.5 h-3.5" />
+          {{ t('erp.orders.readOnlyNotice') }}
+        </span>
+        <RouterLink to="/erp/sale-orders"
+          class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold
+                 bg-white text-[#637381] border border-[#E2E8F0] hover:bg-[#F7F9FC] hover:text-[#1C2434] transition-colors">
+          {{ t('erp.orders.backToList') }}
+        </RouterLink>
+      </div>
+      <div v-else class="flex items-center gap-2.5">
         <button @click="discard" type="button"
           class="px-4 py-2.5 text-sm font-medium text-[#637381] hover:text-[#1C2434] transition-colors">
           {{ t('erp.orders.discard') }}
@@ -604,7 +620,7 @@ import {
   ArrowPathIcon, UserIcon, ClipboardDocumentListIcon,
   CalculatorIcon, ExclamationTriangleIcon,
   Bars3Icon, CubeIcon, ChevronDownIcon, ChevronRightIcon,
-  MapPinIcon, BookmarkSquareIcon, BookOpenIcon, PrinterIcon,
+  MapPinIcon, BookmarkSquareIcon, BookOpenIcon, PrinterIcon, LockClosedIcon,
 } from '@heroicons/vue/24/outline'
 import AppLayout from '@/layouts/AppLayout.vue'
 import CurrencySelector from '@/components/CurrencySelector.vue'
@@ -637,6 +653,10 @@ const router      = useRouter()
 const settings    = useSettingsStore()
 
 const order        = ref(null)
+// Only drafts are editable. Any other status opens this page as a read-only
+// view: every control is disabled and the save actions are hidden.
+const readonly = computed(() => !!order.value && order.value.status !== 'draft')
+const STATUS_VARIANT = { draft: 'draft', confirmed: 'info', shipped: 'draft', delivered: 'success', cancelled: 'danger' }
 const customers    = ref([])
 const saleItems    = ref([])
 const salePackages = ref([])
@@ -891,11 +911,7 @@ onMounted(async () => {
   }
 
   const o = orderRes.value.data.data.order
-  if (o.status !== 'draft') {
-    // Only draft orders can be edited — bounce back to detail
-    router.replace(`/erp/sale-orders/${id}`)
-    return
-  }
+  // Non-draft orders are loaded too, but rendered read-only (see `readonly`).
   order.value = o
 
   // Reconstruct parent/child links: server uses real UUIDs, the client uses
@@ -976,6 +992,7 @@ function syncAddressesFromCustomer() {
 
 // ── Inline customer create ──────────────────────────────────────────────
 function openCustomerCreate() {
+  if (readonly.value) return
   newCustomer.value = { name: '', company: '', email: '', phone: '', address: '' }
   newCustomerError.value = ''
   customerCreateOpen.value = true
@@ -1108,6 +1125,7 @@ function groupSpan(startIdx) {
 }
 
 function onDragStart(e, idx) {
+  if (readonly.value) { e.preventDefault(); return }
   const top = topLevelStart(idx)
   dragFromIdx.value = top
   e.dataTransfer.effectAllowed = 'move'
@@ -1238,7 +1256,7 @@ async function expandPackageInto(idx, packageId) {
 
 // ── Bulk-add popup wiring ───────────────────────────────────────────────
 const bulkPickerRef = ref(null)
-function openBulkPicker() { bulkPickerRef.value?.open() }
+function openBulkPicker() { if (readonly.value) return; bulkPickerRef.value?.open() }
 
 function makeLineFromSaleItem(si, parentKey = '') {
   const customer = customers.value.find(c => c.id === form.value.customerId)
@@ -1418,6 +1436,7 @@ function validate() {
 // `redirect` controls whether we navigate back to the detail page after save.
 // Save Changes → redirect; Save Draft → stay on edit page with "saved" indicator.
 async function save({ redirect = true } = {}) {
+  if (readonly.value) return
   globalError.value = ''
   resetErrors()
   if (!validate()) return

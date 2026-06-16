@@ -62,6 +62,8 @@ export default {
       createOrder:  'สร้างใบสั่งขาย',
       editOrder:    'แก้ไขใบสั่ง',
       discard:      'ยกเลิก',
+      readOnlyNotice: 'อ่านอย่างเดียว — แก้ไขได้เฉพาะใบสั่งที่เป็นร่าง',
+      backToList:     'กลับไปที่รายการ',
       updateStatus: 'อัปเดตสถานะ',
       deleteOrder:  'ลบใบสั่ง',
       colCode:      'รหัส',

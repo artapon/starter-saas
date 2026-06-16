@@ -171,10 +171,10 @@ const dataTableRef = ref(null)
 const activeFilterCount = computed(() => [filterStatus.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length)
 const totalPages = computed(() => Math.ceil(total.value / limit))
 
-// Clicking a row opens the editor for drafts (the only editable status); other
-// statuses aren't editable, so they fall back to the read-only detail view.
+// Every row opens the editor. Drafts are editable there; other statuses load
+// the same page in a read-only view (the editor disables itself).
 function rowTarget(r) {
-  return r.status === 'draft' ? `/erp/sale-orders/${r.id}/edit` : `/erp/sale-orders/${r.id}`
+  return `/erp/sale-orders/${r.id}/edit`
 }
 
 const { selectedIndex: selectedRowIndex, shortcuts, open: openRow } = useListShortcuts({
