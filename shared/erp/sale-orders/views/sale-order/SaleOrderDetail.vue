@@ -96,10 +96,7 @@
           </div>
         </div>
 
-        <!-- Printable document (extracted report view) -->
-        <SaleOrderReport :order="order" />
-
-        <!-- ── Action panels (outside the document) ─────────────── -->
+        <!-- ── Action panels (above the printable document) ─────── -->
 
         <!-- Status transitions -->
         <div v-can="'erp.orders.edit'" v-if="forwardTransitions.length || cancelTransitions.length"
@@ -159,6 +156,9 @@
 
           <span v-if="convertError" class="self-center text-xs text-red-600">{{ convertError }}</span>
         </div>
+
+        <!-- Printable document (extracted report view) -->
+        <SaleOrderReport :order="order" />
 
         <ActivityTimeline v-if="order" ref-type="Order" :ref-id="order.id" class="print:hidden" />
       </template>
