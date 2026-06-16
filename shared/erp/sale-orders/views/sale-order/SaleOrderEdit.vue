@@ -1,6 +1,6 @@
 ﻿<template>
   <AppLayout>
-    <div class="space-y-5 print:hidden">
+    <div class="space-y-5">
 
       <PageHeader :title="loading ? t('erp.orders.editOrder') : (order?.orderNumber || t('erp.orders.editOrder'))"
         :back-to="`/erp/sale-orders/${route.params.id}`"
@@ -14,13 +14,13 @@
         </template>
         <template #actions>
           <KeyboardShortcuts :shortcuts="shortcuts" width="w-64" />
-          <button @click="onPrint" type="button"
-            :title="t('common.print')"
+          <RouterLink v-if="!loading && order" :to="`/erp/sale-orders/${route.params.id}`"
+            :title="t('erp.orders.previewPrint')"
             class="inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold
                    text-[#637381] bg-white border border-[#E2E8F0] hover:bg-[#F7F9FC] hover:text-[#1C2434] transition-colors">
             <PrinterIcon class="w-4 h-4" />
-            {{ t('common.print') }}
-          </button>
+            {{ t('erp.orders.previewPrint') }}
+          </RouterLink>
           <HeaderSaveActions
             :cancel-to="`/erp/sale-orders/${route.params.id}`"
             :cancel-label="t('common.cancel')"
@@ -470,11 +470,8 @@
       </div>
     </div>
 
-    <!-- Printable document — hidden on screen, shown only when printing -->
-    <SaleOrderReport v-if="!loading && !loadError" :order="printOrder" class="hidden print:block" />
-
     <!-- Sticky save bar -->
-    <div v-if="!loading && !loadError" class="sticky bottom-0 -mx-6 mt-6 px-6 py-3.5 bg-white/95 backdrop-blur border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(15,23,42,0.05)] z-20 print:hidden
+    <div v-if="!loading && !loadError" class="sticky bottom-0 -mx-6 mt-6 px-6 py-3.5 bg-white/95 backdrop-blur border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(15,23,42,0.05)] z-20
                 flex items-center justify-between gap-3">
       <div class="flex items-center gap-4">
         <div>
@@ -600,7 +597,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { useRoute, useRouter, RouterLink, onBeforeRouteLeave } from 'vue-router'
 import {
   PlusIcon, TrashIcon, XMarkIcon,
   CheckIcon, ShoppingCartIcon,
@@ -628,7 +625,6 @@ import EmptyState from '@/components/form/EmptyState.vue'
 import FieldError from '@/components/form/FieldError.vue'
 import LoadingSpinner from '@/components/form/LoadingSpinner.vue'
 import OrderJournalsPanel from './OrderJournalsPanel.vue'
-import SaleOrderReport from '@shared/reporting/templates/erp/sale-order/SaleOrderReport.vue'
 import { useFieldErrors } from '@/composables/useFieldErrors'
 import api from '@/api'
 import { fmtMoney, toFixed } from '@/utils/fmt'
@@ -1361,40 +1357,6 @@ const grandTotal = computed(() => Number(subtotal.value) + Number(taxAmount.valu
 const whtAmount = computed(() => toFixed((Number(subtotal.value) + Number(taxAmount.value)) * (Number(form.value.whtRate) || 0) / 100, 2))
 const netTotal  = computed(() => toFixed(Number(grandTotal.value) - Number(whtAmount.value), 2))
 
-// ── Printable document ──────────────────────────────────────────────────
-// Build the order shape SaleOrderReport expects from the live form so the
-// document reflects unsaved edits, falling back to the loaded order for the
-// fields the form doesn't track (number, status, expected delivery).
-const printOrder = computed(() => ({
-  orderNumber:          order.value?.orderNumber || '',
-  status:               order.value?.status || 'draft',
-  orderDate:            form.value.orderDate,
-  expectedDeliveryDate: order.value?.expectedDeliveryDate || null,
-  referenceNumber:      form.value.referenceNumber,
-  paymentTerms:         form.value.paymentTerms,
-  notes:                form.value.notes,
-  currency:             form.value.currency,
-  billingAddress:       form.value.billingAddress,
-  customer:             selectedCustomer.value || order.value?.customer || null,
-  salesperson:          staff.value.find(s => s.id === form.value.salespersonId) || order.value?.salesperson || null,
-  subtotal:             Number(subtotal.value)       || 0,
-  discountAmount:       Number(discountAmount.value) || 0,
-  tax:                  Number(taxAmount.value)      || 0,
-  total:                Number(grandTotal.value)     || 0,
-  items: form.value.items.map(line => ({
-    id:            line.key,
-    parentItemId:  line.parentKey || null,
-    productName:   line.productName,
-    quantity:      Number(line.quantity)  || 0,
-    unitPrice:     Number(line.unitPrice) || 0,
-    taxRate:       Number(line.taxRate)   || 0,
-    salePackageId: line.salePackageId || null,
-    salePackage:   line.salePackageId ? { code: salePackages.value.find(p => p.id === line.salePackageId)?.code } : null,
-    saleItem:      line.saleItemId    ? { code: saleItems.value.find(s => s.id === line.saleItemId)?.code }    : null,
-  })),
-}))
-function onPrint() { window.print() }
-
 // The order discount can't exceed the order total: percent ≤ 100, fixed ≤ gross.
 // Clamp on input and whenever the cap changes (type switch / totals change).
 const orderDiscountMax = computed(() =>
@@ -1539,24 +1501,5 @@ const savedAtRelative = computed(() => {
 .customer-field :deep(.multiselect__tags),
 .customer-field :deep(.multiselect__select) {
   cursor: default;
-}
-</style>
-
-<style>
-@page {
-  size: A4;
-  margin: 12mm;
-}
-@media print {
-  aside, header, nav.print\:hidden { display: none !important; }
-  body { background: white !important; }
-  .shadow-card { box-shadow: none !important; }
-  article {
-    width: 186mm !important;
-    max-width: 186mm !important;
-    margin: 0 auto !important;
-    overflow: visible !important;
-  }
-  article table { table-layout: fixed; width: 100% !important; }
 }
 </style>

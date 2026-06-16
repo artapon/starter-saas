@@ -17,6 +17,7 @@ export default {
       taxRate:      'Tax Rate (%)',
       notes:        'Notes',
       lineItems:    'Line Items',
+      previewPrint:     'Preview Print',
       journals:         'Journals',
       journalsCreateHint: 'Journal entries appear here once this order is invoiced or paid.',
       journalsNone:      'No journal entries yet',
