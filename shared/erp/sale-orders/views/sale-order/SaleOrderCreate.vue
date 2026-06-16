@@ -395,8 +395,8 @@
         <!-- Summary + totals -->
         <FormCard :title="t('erp.orders.orderSummary')" :icon="CalculatorIcon" icon-color="slate" :padded="false">
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            <FormField name="notes" :errors="errors"
-              v-model="form.notes" textarea :placeholder="t('erp.orders.notes')"
+            <FormField name="notes" :errors="errors" :label="t('erp.orders.notes')" label-class="label-xs font-bold"
+              v-model="form.notes" textarea
               wrapper-class="flex flex-col text-left h-full" field-wrapper-class="flex-1 flex flex-col min-h-0"
               input-class="resize-none flex-1 min-h-[8rem] h-full" />
 
