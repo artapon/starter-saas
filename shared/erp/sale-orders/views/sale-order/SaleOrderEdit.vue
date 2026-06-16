@@ -160,21 +160,31 @@
           </div>
         </FormCard>
 
-        <!-- Line Items -->
-        <FormCard :title="t('erp.orders.lineItems')" :icon="ClipboardDocumentListIcon" icon-color="green"
-          :subtitle="itemsSubtitle"
-          :padded="false">
-          <template #actions>
-            <button @click="openBulkPicker" type="button"
-              :title="`${t('erp.orders.addItem')} (Ctrl+A)`"
-              class="inline-flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold
-                     text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200
-                     transition-colors">
-              <PlusIcon class="w-3.5 h-3.5" />
-              {{ t('erp.orders.addItem') }}
-              <kbd class="hidden sm:inline ml-0.5 px-1.5 py-0.5 bg-white/80 border border-primary-200 font-mono text-[10px] text-primary-700">Ctrl+A</kbd>
-            </button>
-          </template>
+        <!-- Line Items (tab-styled panel) -->
+        <div class="bg-white border border-[#E2E8F0] shadow-card overflow-hidden">
+          <!-- Tab header -->
+          <div class="px-6 pt-3 border-b border-[#E2E8F0] flex items-end justify-between gap-3">
+            <nav class="flex gap-1 -mb-px" role="tablist">
+              <button type="button" role="tab" :aria-selected="true"
+                class="inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold
+                       border-b-2 border-primary-600 text-primary-700">
+                <ClipboardDocumentListIcon class="w-4 h-4" />
+                {{ t('erp.orders.lineItems') }}
+                <span class="text-[11px] font-normal text-[#9BA7B0]">{{ itemsSubtitle }}</span>
+              </button>
+            </nav>
+            <div class="pb-2 flex-shrink-0">
+              <button @click="openBulkPicker" type="button"
+                :title="`${t('erp.orders.addItem')} (Ctrl+A)`"
+                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold
+                       text-primary-600 bg-primary-50 hover:bg-primary-100 border border-primary-200
+                       transition-colors">
+                <PlusIcon class="w-3.5 h-3.5" />
+                {{ t('erp.orders.addItem') }}
+                <kbd class="hidden sm:inline ml-0.5 px-1.5 py-0.5 bg-white/80 border border-primary-200 font-mono text-[10px] text-primary-700">Ctrl+A</kbd>
+              </button>
+            </div>
+          </div>
 
           <!-- Empty state -->
           <EmptyState v-if="!form.items.length" :icon="ShoppingCartIcon" :title="t('erp.common.noItems')" subtitle="Add products or services to this order" :action-label="t('erp.orders.addFirstItem')" :error-message="errors.items" @action="openBulkPicker" />
@@ -364,7 +374,7 @@
             search-placeholder="Search by code or name…"
             @submit="onBulkAdd"
           />
-        </FormCard>
+        </div>
 
         <ErrorBanner :message="globalError" />
 
