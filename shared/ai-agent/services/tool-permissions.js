@@ -77,6 +77,10 @@ const TOOL_PERMISSIONS = {
   update_sale_item:       'erp.sale-items.manage',
   delete_sale_item:       'erp.sale-items.manage',
 
+  // sales orders (read-only tools)
+  list_sale_orders:       'erp.orders.list',
+  get_sale_order:         'erp.orders.list',
+
   // quotations (read-only tools)
   list_quotations:        'erp.quotations.list',
   get_quotation:          'erp.quotations.list',

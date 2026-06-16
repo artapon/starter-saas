@@ -142,6 +142,28 @@ describe('order.listItems / getItemById', () => {
   })
 })
 
+describe('order.updateItem / deleteItem — draft guard', () => {
+  // No orgId is passed, so findByPkScoped takes its unscoped findByPk path
+  // (matching the order.update / order.remove tests above).
+  test('updateItem refuses items on non-draft orders', async () => {
+    SalesOrderItem.findByPk.mockResolvedValue({ id: 'i1', order: { id: 'o1', status: 'confirmed' } })
+    await expect(service.updateItem('i1', { quantity: 2 }, undefined, 'u'))
+      .rejects.toEqual({ status: 400, message: 'Only items on draft orders can be edited' })
+  })
+
+  test('deleteItem refuses items on non-draft orders', async () => {
+    SalesOrderItem.findByPk.mockResolvedValue({ id: 'i1', order: { id: 'o1', status: 'confirmed' } })
+    await expect(service.deleteItem('i1'))
+      .rejects.toEqual({ status: 400, message: 'Only items on draft orders can be deleted' })
+  })
+
+  test('updateItem throws 404 when missing', async () => {
+    SalesOrderItem.findByPk.mockResolvedValue(null)
+    await expect(service.updateItem('missing', {}, undefined, 'u'))
+      .rejects.toEqual({ status: 404, message: 'Order item not found' })
+  })
+})
+
 describe('order.createDeliveryOrder', () => {
   test('refuses when order is in draft/cancelled', async () => {
     Order.findOne.mockResolvedValue({ id: 'o1', status: 'draft', toJSON() { return { id: 'o1', status: 'draft' } } })
