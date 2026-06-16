@@ -132,7 +132,7 @@ import { h, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  PlusIcon, EyeIcon, DocumentTextIcon,
+  PlusIcon, EyeIcon, PencilSquareIcon, DocumentTextIcon,
   AdjustmentsHorizontalIcon, XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import { createColumnHelper } from '@tanstack/vue-table'
@@ -171,9 +171,15 @@ const dataTableRef = ref(null)
 const activeFilterCount = computed(() => [filterStatus.value, filterDateFrom.value, filterDateTo.value].filter(Boolean).length)
 const totalPages = computed(() => Math.ceil(total.value / limit))
 
+// Clicking a row opens the editor for drafts (the only editable status); other
+// statuses aren't editable, so they fall back to the read-only detail view.
+function rowTarget(r) {
+  return r.status === 'draft' ? `/erp/sale-orders/${r.id}/edit` : `/erp/sale-orders/${r.id}`
+}
+
 const { selectedIndex: selectedRowIndex, shortcuts, open: openRow } = useListShortcuts({
   rows: orders, page, totalPages,
-  open:        r => router.push(`/erp/sale-orders/${r.id}`),
+  open:        r => router.push(rowTarget(r)),
   create:      () => router.push('/erp/sale-orders/create'),
   focusSearch: () => dataTableRef.value?.focusSearch(),
   newLabel: 'New order',
@@ -264,13 +270,17 @@ const columns = [
     id: 'actions',
     header: () => '',
     meta: { thClass: 'w-16', tdClass: '' },
-    cell: info => h('div', { class: 'flex items-center justify-end' }, [
-      h(RouterLink, {
-        to: `/erp/sale-orders/${info.row.original.id}`,
-        class: 'p-1.5 text-[#9BA7B0] hover:text-primary-500 hover:bg-primary-50 transition-colors',
-        title: 'View',
-      }, () => h(EyeIcon, { class: 'w-4 h-4' })),
-    ]),
+    cell: info => {
+      const o = info.row.original
+      const isDraft = o.status === 'draft'
+      return h('div', { class: 'flex items-center justify-end' }, [
+        h(RouterLink, {
+          to: rowTarget(o),
+          class: 'p-1.5 text-[#9BA7B0] hover:text-primary-500 hover:bg-primary-50 transition-colors',
+          title: isDraft ? 'Edit' : 'View',
+        }, () => h(isDraft ? PencilSquareIcon : EyeIcon, { class: 'w-4 h-4' })),
+      ])
+    },
   }),
 ]
 </script>
