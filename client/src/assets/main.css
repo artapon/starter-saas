@@ -94,6 +94,11 @@
     @apply block text-[11px] font-semibold text-[#637381] uppercase tracking-wider mb-1.5;
   }
 
+  /* Sale-order create/edit/view: render field labels at text-sm. */
+  .so-labels-sm .label-xs {
+    @apply text-sm;
+  }
+
   /* ── Cards ────────────────────────────────────────────────────────────────── */
   .card {
     @apply bg-white rounded-2xl border border-[#E2E8F0] shadow-card;

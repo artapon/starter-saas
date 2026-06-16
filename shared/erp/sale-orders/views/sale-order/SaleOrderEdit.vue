@@ -1,6 +1,6 @@
 ﻿<template>
   <AppLayout>
-    <div class="space-y-5">
+    <div class="space-y-5 so-labels-sm">
 
       <PageHeader :title="loading ? t('erp.orders.editOrder') : (order?.orderNumber || t('erp.orders.editOrder'))"
         back-to="/erp/sale-orders"

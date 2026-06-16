@@ -1,6 +1,6 @@
 ﻿<template>
   <AppLayout>
-    <div class="space-y-5">
+    <div class="space-y-5 so-labels-sm">
 
       <PageHeader :title="t('erp.orders.new')" back-to="/erp/sale-orders"
         :breadcrumb="[
