@@ -94,9 +94,10 @@
     @apply block text-[11px] font-semibold text-[#637381] uppercase tracking-wider mb-1.5;
   }
 
-  /* Sale-order create/edit/view: render field labels at text-sm. */
+  /* Sale-order create/edit/view: render field labels at text-sm in their
+     natural mixed case (not the compact uppercase treatment). */
   .so-labels-sm .label-xs {
-    @apply text-sm;
+    @apply text-sm normal-case tracking-normal;
   }
 
   /* ── Cards ────────────────────────────────────────────────────────────────── */
