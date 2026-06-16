@@ -23,6 +23,20 @@ module.exports = {
     }
   },
 
+  // Outstanding receivables for a customer, surfaced on the order form so the
+  // salesperson sees overdue invoices before taking a new order. Reuses the
+  // accounting AR-aging service but is gated by the order-list permission.
+  async customerArAging(req, res) {
+    try {
+      const orgId = req.user?.organizationId || req.user?.id
+      const arAgingService = require('../../accounting/services/ar-aging.service')
+      const report = await arAgingService.getReport({ customerId: req.params.customerId, organizationId: orgId })
+      return ok(res, { report })
+    } catch (err) {
+      return fail(res, err.message, err.status || 400)
+    }
+  },
+
   async create(req, res) {
     try {
       const orgId = req.user?.organizationId || req.user?.id

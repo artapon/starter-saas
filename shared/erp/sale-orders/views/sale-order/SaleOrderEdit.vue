@@ -22,7 +22,7 @@
                first, so transitions are disabled while there are unsaved edits. -->
           <template v-if="!loading && order">
             <button v-for="s in forwardTransitions" :key="s"
-              @click="changeStatus(s)" :disabled="updatingStatus || dirty"
+              @click="confirmAndChangeStatus(s)" :disabled="updatingStatus || dirty"
               :title="dirty ? t('erp.orders.saveBeforeAction') : ''"
               class="inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold
                      transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -31,10 +31,17 @@
               <template v-else>{{ transitionLabel(s) }}</template>
             </button>
 
+            <button v-for="s in cancelTransitions" :key="s"
+              @click="confirmAndChangeStatus(s)" :disabled="updatingStatus"
+              class="inline-flex items-center px-3 py-2.5 text-[12px] font-semibold border border-red-200
+                     text-red-600 bg-white hover:bg-red-50 transition-colors disabled:opacity-50">
+              {{ t('erp.orders.cancelOrder') }}
+            </button>
+
             <button v-if="['confirmed', 'shipped', 'delivered'].includes(order.status)"
-              v-can="'erp.orders.edit'" @click="convertToDeliveryOrder"
+              v-can="'erp.orders.edit'" @click="confirmAndConvert"
               :disabled="!!converting || !!order.linkedDeliveryOrder"
-              :title="order.linkedDeliveryOrder ? `Already linked to ${order.linkedDeliveryOrder.refNo}` : ''"
+              :title="order.linkedDeliveryOrder ? t('erp.orders.alreadyLinkedTo', { ref: order.linkedDeliveryOrder.refNo }) : ''"
               class="inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold
                      text-primary-600 bg-primary-50 border border-primary-200 hover:bg-primary-100
                      transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -45,13 +52,6 @@
               class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
               → {{ order.linkedDeliveryOrder.refNo }}
             </RouterLink>
-
-            <button v-for="s in cancelTransitions" :key="s"
-              @click="changeStatus(s)" :disabled="updatingStatus"
-              class="inline-flex items-center px-3 py-2.5 text-[12px] font-semibold border border-red-200
-                     text-red-600 bg-white hover:bg-red-50 transition-colors disabled:opacity-50">
-              {{ t('erp.orders.cancelOrder') }}
-            </button>
           </template>
 
           <RouterLink v-if="!loading && order" :to="`/erp/sale-orders/${route.params.id}`"
@@ -61,17 +61,6 @@
             <PrinterIcon class="w-4 h-4" />
             {{ t('erp.orders.previewPrint') }}
           </RouterLink>
-          <HeaderSaveActions
-            v-if="!readonly"
-            cancel-to="/erp/sale-orders"
-            :cancel-label="t('common.cancel')"
-            :saving="saving"
-            :saving-label="t('erp.common.saving')"
-            :save-label="t('common.saveChanges')"
-            :disabled="!canSave"
-            :disabled-hint="t('erp.orders.fillRequiredFields')"
-            @save="save"
-          />
         </template>
       </PageHeader>
 
@@ -88,10 +77,14 @@
 
         <!-- Customer & Order Info -->
         <FormCard :title="t('erp.orders.customerInfo')" :icon="UserIcon" icon-color="primary" :padded="false">
+          <template #actions>
+            <OrderWorkflowStrip v-if="order" :status="order.status" />
+          </template>
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-5">
 
             <!-- Sale type: cash → Receipt, credit → Invoice — own full row -->
-            <div class="lg:col-span-3" ref="saleTypeContainerRef"
+            <ReadonlyField v-if="readonly" class="lg:col-span-3" :label="t('erp.orders.saleType')" :value="saleTypeLabel" />
+            <div v-else class="lg:col-span-3" ref="saleTypeContainerRef"
               @keydown.left.prevent="cycleSaleType(-1)"
               @keydown.right.prevent="cycleSaleType(1)">
               <FieldLabel :text="t('erp.orders.saleType')" required />
@@ -107,7 +100,14 @@
             </div>
 
             <!-- Customer -->
-            <div>
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.customer')">
+              <div class="flex items-center gap-2 flex-wrap">
+                <CustomerChip v-if="selectedCustomer" :customer="selectedCustomer" />
+                <span v-else>—</span>
+                <CustomerArAgingAlert :customer-id="form.customerId" />
+              </div>
+            </ReadonlyField>
+            <div v-else>
               <FieldLabel :text="t('erp.orders.customer')" required />
               <div class="flex gap-2 items-start">
                 <div class="flex-1 min-w-0 customer-field">
@@ -126,11 +126,15 @@
                 </button>
               </div>
               <FieldError :error="errors.customerId" />
-              <CustomerChip :customer="selectedCustomer" />
+              <div class="flex items-center gap-2 flex-wrap">
+                <CustomerChip :customer="selectedCustomer" />
+                <CustomerArAgingAlert :customer-id="form.customerId" />
+              </div>
             </div>
 
             <!-- Reference / PO # -->
-            <FormField name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors">
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.referenceNumber')" :value="form.referenceNumber" />
+            <FormField v-else name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors">
               <template #default="{ id }">
                 <input :id="id" ref="referenceInputRef" v-model="form.referenceNumber" type="text"
                   placeholder="e.g. PO-2025-001" class="input" />
@@ -138,14 +142,16 @@
             </FormField>
 
             <!-- Order Date -->
-            <FormField name="orderDate" :label="t('erp.orders.orderDate')" :errors="errors" required>
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.orderDate')" :value="fmtDate(form.orderDate)" />
+            <FormField v-else name="orderDate" :label="t('erp.orders.orderDate')" :errors="errors" required>
               <template #default="{ hasError }">
                 <DateInput v-model="form.orderDate" :class="['input', hasError && 'input-error']" />
               </template>
             </FormField>
 
             <!-- Salesperson -->
-            <div>
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.salesperson')" :value="salespersonName" />
+            <div v-else>
               <FieldLabel :text="t('erp.orders.salesperson')" />
               <SearchSelect v-model="form.salespersonId" :options="staff" :disabled="readonly" placeholder="— Salesperson —">
                 <template #option="{ option }">{{ option.name }}<span v-if="option.email" class="text-[#9BA7B0]"> · {{ option.email }}</span></template>
@@ -154,7 +160,8 @@
             </div>
 
             <!-- Payment terms — credit sales only (from master-data) -->
-            <FormField v-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
+            <ReadonlyField v-if="readonly && form.saleType === 'credit'" :label="t('erp.orders.paymentTerms')" :value="paymentTermsName" />
+            <FormField v-else-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
               <template #default="{ id }">
                 <select :id="id" v-model="form.paymentTerms" class="input">
                   <option value="">—</option>
@@ -164,7 +171,8 @@
             </FormField>
 
             <!-- VAT -->
-            <div>
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.vat')" :value="vatDisplay" />
+            <div v-else>
               <FieldLabel :text="t('erp.orders.vat')" />
               <select v-model.number="form.vatRate" class="input">
                 <option v-for="r in vatRateOptions" :key="r" :value="r">{{ r === 0 ? '— (0%)' : `${r}%` }}</option>
@@ -172,7 +180,8 @@
             </div>
 
             <!-- Currency -->
-            <div>
+            <ReadonlyField v-if="readonly" :label="t('erp.common.currency')" :value="currencyDisplay" />
+            <div v-else>
               <FieldLabel :text="t('erp.common.currency')" />
               <CurrencySelector v-model="form.currency" v-model:exchangeRate="form.exchangeRate" :as-of-date="form.orderDate" :disabled="readonly" />
             </div>
@@ -182,7 +191,7 @@
 
         <!-- Addresses -->
         <FormCard :title="t('erp.orders.addresses')" :icon="MapPinIcon" icon-color="primary" :padded="false">
-          <template #actions>
+          <template v-if="!readonly" #actions>
             <button type="button" @click="syncAddressesFromCustomer"
               :disabled="!selectedCustomer?.address"
               class="inline-flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold
@@ -193,10 +202,13 @@
             </button>
           </template>
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <FormField name="shippingAddress" :label="t('erp.orders.shippingAddress')" :errors="errors"
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.shippingAddress')" :value="form.shippingAddress" />
+            <FormField v-else name="shippingAddress" :label="t('erp.orders.shippingAddress')" :errors="errors"
               v-model="form.shippingAddress" textarea :rows="3" placeholder="Ship to address…"
               input-class="resize-none" />
-            <div>
+
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.billingAddress')" :value="form.billingAddress" />
+            <div v-else>
               <div class="flex items-center justify-between">
                 <FieldLabel :text="t('erp.orders.billingAddress')" />
                 <label class="flex items-center gap-1.5 text-[11px] text-[#637381] cursor-pointer select-none">
@@ -236,7 +248,7 @@
                 {{ t('erp.orders.journals') }}
               </div>
             </nav>
-            <div v-if="activeTab === 'items'" class="pb-2 flex-shrink-0">
+            <div v-if="activeTab === 'items' && !readonly" class="pb-2 flex-shrink-0">
               <button @click="openBulkPicker" type="button"
                 :title="`${t('erp.orders.addItem')} (Ctrl+A)`"
                 class="inline-flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold
@@ -285,8 +297,12 @@
                 @drop="onDrop(idx)"
                 @dragleave="onDragLeave(idx)">
 
-                <!-- Drag handle: only top-level rows are draggable. -->
-                <div v-if="!line.parentKey"
+                <!-- Drag handle: only top-level rows are draggable (edit only). -->
+                <div v-if="readonly && !line.parentKey"
+                  class="text-[12px] font-semibold text-center select-none text-[#637381]">
+                  {{ idx + 1 }}
+                </div>
+                <div v-else-if="!line.parentKey"
                   draggable="true"
                   @dragstart="onDragStart($event, idx)"
                   @dragend="onDragEnd"
@@ -315,6 +331,7 @@
                   <span class="truncate">{{ line.productName }}</span>
                   <span class="text-[11px] font-semibold text-[#9BA7B0] tabular-nums flex-shrink-0">× {{ line.quantity }}</span>
                 </div>
+                <div v-else-if="readonly" class="text-[13px] text-[#1C2434] truncate">{{ lineItemName(line) }}</div>
                 <SearchSelectPopup
                   v-else
                   v-model="line.saleItemId"
@@ -330,7 +347,10 @@
 
                 <!-- Store -->
                 <div>
-                  <SearchSelect v-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :disabled="readonly" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" @change="clampLineQty(line)" />
+                  <div v-if="readonly" class="text-[13px] text-[#1C2434] truncate">
+                    {{ (!line.isPackage && line.hasProduct) ? (storeName(line) || '—') : '—' }}
+                  </div>
+                  <SearchSelect v-else-if="!line.isPackage && line.hasProduct" v-model="line.storeId" :options="stores" :disabled="readonly" :invalid="line.hasProduct && !line.storeId" placeholder="— Store —" @change="clampLineQty(line)" />
                   <div v-else class="flex items-center justify-center h-9">
                     <span class="text-[12px] text-[#CBD5E1]">—</span>
                   </div>
@@ -339,6 +359,18 @@
                 <!-- Quantity / Unit price / Disc % / Amount -->
                 <template v-if="line.parentKey">
                   <div></div><div></div><div></div><div></div>
+                </template>
+                <template v-else-if="readonly">
+                  <div class="text-[13px] text-right text-[#1C2434] tabular-nums">{{ fmtQty(line.quantity) }}</div>
+                  <div class="text-[13px] text-right text-[#1C2434] tabular-nums">{{ fmtMoney(line.unitPrice) }}</div>
+                  <div class="text-[13px] text-right tabular-nums"
+                    :class="line.isPackage ? 'text-[#CBD5E1]' : 'text-[#637381]'">
+                    {{ line.isPackage ? '—' : lineDiscountLabel(line) }}
+                  </div>
+                  <div class="text-[13px] tabular-nums text-right"
+                    :class="line.isPackage ? 'font-bold text-primary-700' : 'font-semibold text-[#1C2434]'">
+                    {{ fmtMoney(lineNet(line)) }}
+                  </div>
                 </template>
                 <template v-else>
                   <input v-model.number="line.quantity" type="number" min="1"
@@ -399,13 +431,14 @@
                 </div>
                 <div v-else></div>
 
-                <button @click="removeLine(idx)" type="button"
+                <button v-if="!readonly" @click="removeLine(idx)" type="button"
                   :title="line.isPackage ? t('erp.orders.removePackage') : t('common.delete')"
                   class="w-7 h-7 flex items-center justify-center flex-shrink-0
                          text-[#94A3B8] border border-[#E2E8F0] bg-white
                          hover:text-red-600 hover:border-red-500 transition-colors">
                   <TrashIcon class="w-4 h-4" />
                 </button>
+                <div v-else></div>
               </div>
             </div>
 
@@ -452,7 +485,8 @@
         <!-- Summary + totals -->
         <FormCard :title="t('erp.orders.orderSummary')" :icon="CalculatorIcon" icon-color="slate" :padded="false">
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            <FormField name="notes" :errors="errors"
+            <ReadonlyField v-if="readonly" :label="t('erp.orders.notes')" :value="form.notes" />
+            <FormField v-else name="notes" :errors="errors"
               v-model="form.notes" textarea :placeholder="t('erp.orders.notes')"
               wrapper-class="flex flex-col text-left h-full" field-wrapper-class="flex-1 flex flex-col min-h-0"
               input-class="resize-none flex-1 min-h-[8rem] h-full" />
@@ -471,28 +505,34 @@
               </div>
               <!-- Discount input row -->
               <div class="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.discount') }}</dt>
+                <dt class="text-[#637381] flex-shrink-0">
+                  {{ t('erp.orders.discount') }}<span v-if="readonly && orderDiscountLabel" class="text-[#9BA7B0]"> · {{ orderDiscountLabel }}</span>
+                </dt>
                 <div class="flex items-center gap-1.5">
-                  <select v-model="form.discountType"
-                    class="px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
-                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
-                    <option value="">—</option>
-                    <option value="percent">%</option>
-                    <option value="fixed">{{ form.currency || '฿' }}</option>
-                  </select>
-                  <input v-model.number="form.discountValue" type="number" min="0" step="0.01" placeholder="0"
-                    :disabled="!form.discountType" :max="orderDiscountMax" @input="clampOrderDiscount"
-                    class="w-16 px-2 py-1.5 border border-[#E2E8F0] text-[12px] text-right tabular-nums
-                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
-                           disabled:bg-[#F7F9FC] disabled:text-[#9BA7B0]" />
+                  <template v-if="!readonly">
+                    <select v-model="form.discountType"
+                      class="px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
+                             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
+                      <option value="">—</option>
+                      <option value="percent">%</option>
+                      <option value="fixed">{{ form.currency || '฿' }}</option>
+                    </select>
+                    <input v-model.number="form.discountValue" type="number" min="0" step="0.01" placeholder="0"
+                      :disabled="!form.discountType" :max="orderDiscountMax" @input="clampOrderDiscount"
+                      class="w-16 px-2 py-1.5 border border-[#E2E8F0] text-[12px] text-right tabular-nums
+                             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
+                             disabled:bg-[#F7F9FC] disabled:text-[#9BA7B0]" />
+                  </template>
                   <span class="text-[13px] font-semibold text-red-600 tabular-nums w-24 text-right">−{{ fmtMoney(discountAmount) }}</span>
                 </div>
               </div>
               <!-- Withholding tax (gated by ERP Settings → General → Tax) -->
               <div v-if="settings.tax?.withholding" class="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                <dt class="text-[#637381] flex-shrink-0">{{ t('erp.orders.wht') }}</dt>
+                <dt class="text-[#637381] flex-shrink-0">
+                  {{ t('erp.orders.wht') }}<span v-if="readonly && whtName" class="text-[#9BA7B0]"> · {{ whtName }}</span>
+                </dt>
                 <div class="flex items-center gap-1.5">
-                  <select v-model="form.whtCode" @change="onWhtChange"
+                  <select v-if="!readonly" v-model="form.whtCode" @change="onWhtChange"
                     class="max-w-[20rem] px-2 py-1.5 border border-[#E2E8F0] text-[12px] bg-white
                            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400">
                     <option value="">—</option>
@@ -594,7 +634,8 @@
                 {{ t('common.cancel') }}
               </button>
               <button type="button" @click="confirmAnswer(true)"
-                class="px-4 py-2 text-[13px] font-semibold text-[#637381] border border-[#E2E8F0] hover:text-red-600 hover:border-red-200 hover:bg-red-50/50 transition-colors">
+                class="px-4 py-2 text-[13px] font-semibold transition-colors"
+                :class="confirmOkClass">
                 {{ confirmOkLabel }}
               </button>
               <button v-if="confirmSaveLabel" type="button" @click="confirmAnswer('save')"
@@ -679,15 +720,17 @@ import FormField from '@/components/form/FormField.vue'
 import FieldLabel from '@/components/form/FieldLabel.vue'
 import ErrorBanner from '@/components/form/ErrorBanner.vue'
 import StatusPill from '@/components/form/StatusPill.vue'
-import HeaderSaveActions from '@/components/form/HeaderSaveActions.vue'
 import CustomerChip from '@/components/form/CustomerChip.vue'
 import EmptyState from '@/components/form/EmptyState.vue'
 import FieldError from '@/components/form/FieldError.vue'
+import ReadonlyField from '@/components/form/ReadonlyField.vue'
 import LoadingSpinner from '@/components/form/LoadingSpinner.vue'
 import OrderJournalsPanel from './OrderJournalsPanel.vue'
+import OrderWorkflowStrip from './OrderWorkflowStrip.vue'
+import CustomerArAgingAlert from './CustomerArAgingAlert.vue'
 import { useFieldErrors } from '@/composables/useFieldErrors'
 import api from '@/api'
-import { fmtMoney, toFixed } from '@/utils/fmt'
+import { fmtMoney, toFixed, fmtDate, fmtQty } from '@/utils/fmt'
 import { parseApiError } from '@/utils/apiError'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -718,7 +761,11 @@ const TRANSITIONS = {
 }
 const availableTransitions = computed(() => TRANSITIONS[order.value?.status] || [])
 const forwardTransitions   = computed(() => availableTransitions.value.filter(s => s !== 'cancelled'))
-const cancelTransitions    = computed(() => availableTransitions.value.filter(s => s === 'cancelled'))
+// Cancel Order only applies once the order has been confirmed — a still-draft
+// order is discarded/deleted instead, not cancelled.
+const cancelTransitions    = computed(() =>
+  order.value?.status === 'draft' ? [] : availableTransitions.value.filter(s => s === 'cancelled')
+)
 
 const FORWARD_BTN = {
   confirmed: 'bg-blue-600 text-white hover:bg-blue-700',
@@ -727,8 +774,8 @@ const FORWARD_BTN = {
 }
 function forwardBtnClass(s) { return FORWARD_BTN[s] || 'bg-primary-500 text-white hover:bg-primary-600' }
 
-const TRANSITION_LABELS = { confirmed: 'Confirm Order', shipped: 'Mark as Shipped', delivered: 'Mark as Delivered' }
-function transitionLabel(s) { return TRANSITION_LABELS[s] || s }
+const TRANSITION_LABELS = { confirmed: 'erp.orders.confirmOrder', shipped: 'erp.orders.markAsShipped', delivered: 'erp.orders.markAsDelivered' }
+function transitionLabel(s) { return TRANSITION_LABELS[s] ? t(TRANSITION_LABELS[s]) : s }
 
 async function changeStatus(status) {
   statusError.value    = ''
@@ -752,6 +799,35 @@ async function convertToDeliveryOrder() {
   } catch (err) {
     convertError.value = parseApiError(err, 'Failed to create delivery order')
   } finally { converting.value = '' }
+}
+
+// Every workflow action confirms via the modal before running. Affirmative
+// transitions use the primary button; cancelling uses the destructive variant.
+const STATUS_CONFIRM = {
+  confirmed: { okKey: 'erp.orders.confirmOrder',    variant: 'primary' },
+  shipped:   { okKey: 'erp.orders.markAsShipped',   variant: 'primary' },
+  delivered: { okKey: 'erp.orders.markAsDelivered', variant: 'primary' },
+  cancelled: { okKey: 'erp.orders.cancelOrder',     variant: 'danger'  },
+}
+async function confirmAndChangeStatus(status) {
+  const meta = STATUS_CONFIRM[status]
+  if (!meta) return changeStatus(status)
+  const ok = await confirmAsync({
+    title:   t(`erp.orders.confirm.${status}.title`),
+    message: t(`erp.orders.confirm.${status}.message`),
+    okLabel: t(meta.okKey),
+    variant: meta.variant,
+  })
+  if (ok === true) changeStatus(status)
+}
+async function confirmAndConvert() {
+  const ok = await confirmAsync({
+    title:   t('erp.orders.confirm.convert.title'),
+    message: t('erp.orders.confirm.convert.message'),
+    okLabel: t('erp.orders.createDeliveryOrder'),
+    variant: 'primary',
+  })
+  if (ok === true) convertToDeliveryOrder()
 }
 const customers    = ref([])
 const saleItems    = ref([])
@@ -863,16 +939,25 @@ const confirmTitle     = ref('')
 const confirmMessage   = ref('')
 const confirmOkLabel   = ref('OK')
 const confirmSaveLabel = ref('')
+// OK-button styling: '' = neutral (default, e.g. "Don't Save"), 'primary' =
+// affirmative workflow action, 'danger' = destructive (cancel order).
+const confirmVariant   = ref('')
+const confirmOkClass = computed(() => {
+  if (confirmVariant.value === 'primary') return 'text-white bg-primary-600 hover:bg-primary-700 shadow-sm'
+  if (confirmVariant.value === 'danger')  return 'text-white bg-red-600 hover:bg-red-700 shadow-sm'
+  return 'text-[#637381] border border-[#E2E8F0] hover:text-red-600 hover:border-red-200 hover:bg-red-50/50'
+})
 let confirmResolver    = null
 // When Esc opens this dialog (via the form's cancel shortcut), the *same* keydown
 // would otherwise also reach the modal handler and immediately close it. Set this
 // for the rest of the current event loop tick so that opening keypress is ignored.
 let confirmJustOpened  = false
-function confirmAsync({ title, message, okLabel, saveLabel } = {}) {
+function confirmAsync({ title, message, okLabel, saveLabel, variant } = {}) {
   confirmTitle.value     = title   || ''
   confirmMessage.value   = message || ''
   confirmOkLabel.value   = okLabel || 'OK'
   confirmSaveLabel.value = saveLabel || ''
+  confirmVariant.value   = variant || ''
   confirmOpen.value      = true
   confirmJustOpened      = true
   setTimeout(() => { confirmJustOpened = false }, 0)
@@ -907,6 +992,34 @@ onBeforeRouteLeave(async () => {
 const selectedCustomer = computed(() =>
   form.value.customerId ? customers.value.find(c => c.id === form.value.customerId) : null
 )
+
+// ── Read-only display values ─────────────────────────────────────────────
+// Mirror the editable controls as plain text for non-draft (read-only) orders.
+const saleTypeLabel    = computed(() => form.value.saleType === 'cash' ? t('erp.orders.saleTypeCash') : t('erp.orders.saleTypeCredit'))
+const salespersonName  = computed(() => staff.value.find(s => s.id === form.value.salespersonId)?.name || '')
+const paymentTermsName = computed(() => paymentTerms.value.find(p => (p.code || p.name) === form.value.paymentTerms)?.name || '')
+const vatDisplay       = computed(() => Number(form.value.vatRate) > 0 ? `${form.value.vatRate}%` : '— (0%)')
+const currencyDisplay  = computed(() => {
+  const cur = form.value.currency || ''
+  const rate = Number(form.value.exchangeRate) || 1
+  return rate !== 1 ? `${cur} @ ${rate}` : cur
+})
+const orderDiscountLabel = computed(() => {
+  if (!form.value.discountType || !form.value.discountValue) return ''
+  return form.value.discountType === 'percent' ? `${form.value.discountValue}%` : fmtMoney(form.value.discountValue)
+})
+const whtName = computed(() => whtOptions.value.find(o => o.code === form.value.whtCode)?.name || '')
+
+function lineItemName(line) {
+  return line.productName || saleItems.value.find(s => s.id === line.saleItemId)?.name || '—'
+}
+function storeName(line) {
+  return stores.value.find(s => s.id === line.storeId)?.name || ''
+}
+function lineDiscountLabel(line) {
+  if (!line.discountValue) return '—'
+  return line.discountType === 'fixed' ? fmtMoney(line.discountValue) : `${line.discountValue}%`
+}
 
 // Picker columns: price + on-hand, shown right-aligned next to each item.
 const itemMetaColumns = computed(() => [

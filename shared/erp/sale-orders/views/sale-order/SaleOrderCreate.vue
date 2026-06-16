@@ -4,8 +4,8 @@
 
       <PageHeader :title="t('erp.orders.new')" back-to="/erp/sale-orders"
         :breadcrumb="[
-          { label: 'Orders', to: '/erp/sale-orders' },
-          { label: 'Create' },
+          { label: t('erp.orders.title'), to: '/erp/sale-orders' },
+          { label: t('common.create') },
         ]">
         <template #badge>
           <StatusPill :label="t('erp.orders.draft')" />
@@ -20,16 +20,6 @@
             <PrinterIcon class="w-4 h-4" />
             {{ t('erp.orders.previewPrint') }}
           </RouterLink>
-          <HeaderSaveActions
-            cancel-to="/erp/sale-orders"
-            :cancel-label="t('common.cancel')"
-            :saving="saving"
-            :saving-label="t('erp.common.creating')"
-            :save-label="t('erp.orders.createOrder')"
-            :disabled="!canSave"
-            :disabled-hint="t('erp.orders.fillRequiredFields')"
-            @save="save"
-          />
         </template>
       </PageHeader>
 
@@ -38,6 +28,9 @@
 
         <!-- Customer & Order Info -->
         <FormCard :title="t('erp.orders.customerInfo')" :icon="UserIcon" icon-color="primary" :padded="false">
+          <template #actions>
+            <OrderWorkflowStrip status="draft" />
+          </template>
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-5">
 
             <!-- Sale type: cash → Receipt, credit → Invoice — own full row -->
@@ -76,7 +69,10 @@
                 </button>
               </div>
               <FieldError :error="errors.customerId" />
-              <CustomerChip :customer="selectedCustomer" />
+              <div class="flex items-center gap-2 flex-wrap">
+                <CustomerChip :customer="selectedCustomer" />
+                <CustomerArAgingAlert :customer-id="form.customerId" />
+              </div>
             </div>
 
             <!-- Reference / PO # -->
@@ -614,11 +610,12 @@ import FormField from '@/components/form/FormField.vue'
 import FieldLabel from '@/components/form/FieldLabel.vue'
 import ErrorBanner from '@/components/form/ErrorBanner.vue'
 import StatusPill from '@/components/form/StatusPill.vue'
-import HeaderSaveActions from '@/components/form/HeaderSaveActions.vue'
 import CustomerChip from '@/components/form/CustomerChip.vue'
 import EmptyState from '@/components/form/EmptyState.vue'
 import FieldError from '@/components/form/FieldError.vue'
 import OrderJournalsPanel from './OrderJournalsPanel.vue'
+import OrderWorkflowStrip from './OrderWorkflowStrip.vue'
+import CustomerArAgingAlert from './CustomerArAgingAlert.vue'
 import { useFieldErrors } from '@/composables/useFieldErrors'
 import api from '@/api'
 import { fmtMoney, toFixed } from '@/utils/fmt'
@@ -777,8 +774,8 @@ async function saveDraftAndLeave() {
   return !dirty.value
 }
 
-// Vue Router guard — covers in-app navigation (RouterLink in HeaderSaveActions,
-// breadcrumbs, sidebar clicks). beforeunload above handles tab close / reload.
+// Vue Router guard — covers in-app navigation (breadcrumbs, sidebar clicks).
+// beforeunload above handles tab close / reload.
 onBeforeRouteLeave(async () => {
   if (!dirty.value) return true
   const res = await confirmAsync({

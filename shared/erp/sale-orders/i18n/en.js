@@ -74,8 +74,21 @@ export default {
       colTotal:     'Total',
       salesOrderInfo: 'Sales Order Info',
       cancelOrder:    'Cancel Order',
+      confirmOrder:    'Confirm Order',
+      markAsShipped:   'Mark as Shipped',
+      markAsDelivered: 'Mark as Delivered',
+      alreadyLinkedTo: 'Already linked to {ref}',
       createDeliveryOrder: 'Create Delivery Order',
       createInvoice:       'Create Invoice',
+
+      // ── Workflow action confirmations ──────────────────────
+      confirm: {
+        confirmed: { title: 'Confirm this order?',     message: 'This moves the order to Confirmed and locks it from further editing.' },
+        shipped:   { title: 'Mark as shipped?',        message: 'This marks the order as Shipped.' },
+        delivered: { title: 'Mark as delivered?',      message: 'This marks the order as Delivered.' },
+        cancelled: { title: 'Cancel this order?',      message: 'This cancels the order and cannot be undone.' },
+        convert:   { title: 'Create delivery order?',  message: 'A delivery order will be generated from this sales order.' },
+      },
 
       // ── Sale type (cash vs credit) ─────────────────────────
       saleType:        'Sale Type',
@@ -95,6 +108,15 @@ export default {
       useCustomerAddress: 'Use customer address',
       discount:          'Discount',
       newCustomer:       'New Customer',
+
+      // ── Customer AR-aging alert ────────────────────────────
+      arAlertTitle:      'Outstanding receivables',
+      arOutstanding:     'Outstanding',
+      arViewReport:      'View full AR aging report',
+      arAsOf:            'As of',
+      arDaysOverdue:     '{days}d overdue',
+      arNotOverdue:      'Not yet due',
+
       saveDraft:         'Save Draft',
       savedDraft:        'Draft saved',
       dontSave:          "Don't save",
