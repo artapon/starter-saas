@@ -113,6 +113,7 @@ export default {
       arAlertTitle:      'ลูกหนี้ค้างชำระ',
       arOutstanding:     'ค้างชำระ',
       arViewReport:      'ดูรายงานอายุลูกหนี้ทั้งหมด',
+      arViewInvoice:     'เปิดใบแจ้งหนี้ในแท็บใหม่',
       arAsOf:            'ณ วันที่',
       arDaysOverdue:     'เกินกำหนด {days} วัน',
       arNotOverdue:      'ยังไม่ครบกำหนด',

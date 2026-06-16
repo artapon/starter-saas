@@ -113,6 +113,7 @@ export default {
       arAlertTitle:      'Outstanding receivables',
       arOutstanding:     'Outstanding',
       arViewReport:      'View full AR aging report',
+      arViewInvoice:     'Open invoice in a new tab',
       arAsOf:            'As of',
       arDaysOverdue:     '{days}d overdue',
       arNotOverdue:      'Not yet due',

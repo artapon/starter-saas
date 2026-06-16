@@ -75,12 +75,16 @@
                   <th class="px-6 py-2.5 text-left">{{ t('erp.arAging.colInvoice') }}</th>
                   <th class="px-3 py-2.5 text-left">{{ t('erp.arAging.colDueDate') }}</th>
                   <th class="px-3 py-2.5 text-center">{{ t('erp.arAging.colOverdue') }}</th>
-                  <th class="px-6 py-2.5 text-right">{{ t('erp.arAging.colTotal') }}</th>
+                  <th class="px-3 py-2.5 text-right">{{ t('erp.arAging.colTotal') }}</th>
+                  <th class="px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-[#E2E8F0]">
-                <tr v-for="inv in aging.invoices" :key="inv.id" class="hover:bg-[#F7F9FC]">
-                  <td class="px-6 py-2.5 font-medium text-[#1C2434]">{{ inv.invoiceNumber }}</td>
+                <tr v-for="inv in aging.invoices" :key="inv.id"
+                  @click="openInvoice(inv.id)"
+                  :title="t('erp.orders.arViewInvoice')"
+                  class="group cursor-pointer hover:bg-[#F7F9FC] transition-colors">
+                  <td class="px-6 py-2.5 font-medium text-primary-600 group-hover:text-primary-700 group-hover:underline">{{ inv.invoiceNumber }}</td>
                   <td class="px-3 py-2.5 text-[#637381] tabular-nums">{{ fmtDate(inv.dueDate) }}</td>
                   <td class="px-3 py-2.5 text-center">
                     <span v-if="inv.daysOverdue > 0"
@@ -90,9 +94,12 @@
                     </span>
                     <span v-else class="text-[11px] text-[#9BA7B0]">{{ t('erp.orders.arNotOverdue') }}</span>
                   </td>
-                  <td class="px-6 py-2.5 text-right font-semibold tabular-nums"
+                  <td class="px-3 py-2.5 text-right font-semibold tabular-nums"
                     :class="inv.bucket === 'days91plus' ? 'text-red-700' : 'text-[#1C2434]'">
                     {{ fmtMoney(inv.total) }}
+                  </td>
+                  <td class="px-4 py-2.5 text-right">
+                    <ArrowTopRightOnSquareIcon class="w-4 h-4 text-[#CBD5E1] group-hover:text-primary-600 inline-block" />
                   </td>
                 </tr>
               </tbody>
@@ -120,8 +127,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
-import { ExclamationTriangleIcon, XMarkIcon, ChartBarIcon } from '@heroicons/vue/24/outline'
+import { RouterLink, useRouter } from 'vue-router'
+import { ExclamationTriangleIcon, XMarkIcon, ChartBarIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
 import api from '@/api'
 import { fmtMoney, fmtDate } from '@/utils/fmt'
 
@@ -130,6 +137,7 @@ const props = defineProps({
 })
 
 const { t } = useI18n()
+const router = useRouter()
 
 const aging    = ref(null)
 const asOfDate = ref('')
@@ -144,6 +152,14 @@ const BUCKETS = [
 ]
 
 const hasOutstanding = computed(() => !!aging.value && Number(aging.value.summary?.total) > 0)
+
+// Open the invoice in a new tab so the in-progress order form (and its
+// unsaved-changes guard) is left untouched.
+function openInvoice(id) {
+  if (!id) return
+  const href = router.resolve(`/erp/invoices/${id}`).href
+  window.open(href, '_blank', 'noopener')
+}
 
 function overdueBadge(bucket) {
   return {
