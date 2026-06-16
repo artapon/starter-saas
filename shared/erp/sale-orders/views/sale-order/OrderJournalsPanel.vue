@@ -152,4 +152,12 @@ const JournalLinesTable = (p) => {
     ]),
   ])
 }
+// Declared so Vue normalizes kebab-case bindings (total-debit → totalDebit);
+// without this a functional component receives them only as raw attrs.
+JournalLinesTable.props = {
+  lines:       { type: Array,   default: () => [] },
+  totalDebit:  { type: Number,  default: 0 },
+  totalCredit: { type: Number,  default: 0 },
+  framed:      { type: Boolean, default: false },
+}
 </script>
