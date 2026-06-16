@@ -176,21 +176,25 @@
           <!-- Tab header -->
           <div class="px-6 pt-3 border-b border-[#E2E8F0] flex items-end justify-between gap-3">
             <nav class="flex gap-1 -mb-px" role="tablist">
-              <button type="button" role="tab" :aria-selected="activeTab === 'items'" @click="activeTab = 'items'"
-                :class="['inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold border-b-2 transition-colors',
+              <!-- Rendered as divs (not buttons) so they stay clickable even inside
+                   the read-only fieldset — viewing a posted order's items/journals. -->
+              <div role="tab" tabindex="0" :aria-selected="activeTab === 'items'"
+                @click="activeTab = 'items'" @keydown.enter.prevent="activeTab = 'items'" @keydown.space.prevent="activeTab = 'items'"
+                :class="['inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer select-none',
                   activeTab === 'items' ? 'border-primary-600 text-primary-700'
                     : 'border-transparent text-[#637381] hover:text-[#1C2434] hover:border-[#CBD5E1]']">
                 <ClipboardDocumentListIcon class="w-4 h-4" />
                 {{ t('erp.orders.lineItems') }}
                 <span class="text-[11px] font-normal text-[#9BA7B0]">{{ itemsSubtitle }}</span>
-              </button>
-              <button type="button" role="tab" :aria-selected="activeTab === 'journals'" @click="activeTab = 'journals'"
-                :class="['inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold border-b-2 transition-colors',
+              </div>
+              <div role="tab" tabindex="0" :aria-selected="activeTab === 'journals'"
+                @click="activeTab = 'journals'" @keydown.enter.prevent="activeTab = 'journals'" @keydown.space.prevent="activeTab = 'journals'"
+                :class="['inline-flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold border-b-2 transition-colors cursor-pointer select-none',
                   activeTab === 'journals' ? 'border-primary-600 text-primary-700'
                     : 'border-transparent text-[#637381] hover:text-[#1C2434] hover:border-[#CBD5E1]']">
                 <BookOpenIcon class="w-4 h-4" />
                 {{ t('erp.orders.journals') }}
-              </button>
+              </div>
             </nav>
             <div v-if="activeTab === 'items'" class="pb-2 flex-shrink-0">
               <button @click="openBulkPicker" type="button"
