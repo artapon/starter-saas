@@ -134,9 +134,6 @@ const { t } = useI18n()
 const aging    = ref(null)
 const asOfDate = ref('')
 const open     = ref(false)
-// Customer id whose alert we've already auto-popped, so re-renders don't reopen
-// the modal — but switching to a different owing customer pops again.
-let autoShownFor = ''
 
 const BUCKETS = [
   { key: 'current',    label: 'erp.arAging.bucketCurrent', cls: 'text-[#637381]' },
@@ -167,11 +164,7 @@ async function load(customerId) {
     asOfDate.value = report.asOfDate
     const entry = report.customers.find(c => c.customer?.id === customerId) || report.customers[0] || null
     aging.value = entry
-    // Auto-open once per owing customer.
-    if (hasOutstanding.value && autoShownFor !== customerId) {
-      autoShownFor = customerId
-      open.value = true
-    }
+    // The breakdown opens only when the notify icon is clicked.
   } catch {
     // No AR access or request failed — show nothing.
     aging.value = null
