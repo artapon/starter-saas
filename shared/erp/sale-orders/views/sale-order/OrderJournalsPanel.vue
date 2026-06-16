@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- No saved order yet (create page) -->
+    <!-- No saved order yet (create page, before first draft save) -->
     <EmptyState v-if="!orderId" :icon="BookOpenIcon"
       :title="t('erp.orders.journals')"
       :subtitle="t('erp.orders.journalsCreateHint')" />
@@ -15,13 +15,8 @@
       <ErrorBanner :message="error" />
     </div>
 
-    <!-- Posted, but nothing yet -->
-    <EmptyState v-else-if="!journals.length" :icon="BookOpenIcon"
-      :title="t('erp.orders.journalsNone')"
-      :subtitle="t('erp.orders.journalsNoneHint')" />
-
-    <!-- Journal entries -->
-    <div v-else class="divide-y divide-[#E2E8F0]">
+    <!-- Posted journal entries -->
+    <div v-else-if="journals.length" class="divide-y divide-[#E2E8F0]">
       <div v-for="j in journals" :key="j.id" class="px-5 py-4">
         <!-- Entry header -->
         <div class="flex items-center justify-between gap-3 mb-2.5">
@@ -37,40 +32,40 @@
           </div>
           <span class="text-[12px] text-[#637381] tabular-nums flex-shrink-0">{{ fmtDate(j.date) }}</span>
         </div>
-
-        <!-- Lines -->
-        <div class="border border-[#E2E8F0]">
-          <div class="grid grid-cols-[1fr_7rem_7rem] gap-3 px-3 py-2 bg-[#F7F9FC] border-b border-[#E2E8F0]">
-            <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.journalAccount') }}</div>
-            <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.journalDebit') }}</div>
-            <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.journalCredit') }}</div>
-          </div>
-          <div v-for="l in j.lines" :key="l.id"
-            class="grid grid-cols-[1fr_7rem_7rem] gap-3 px-3 py-2 border-b border-[#E2E8F0] last:border-b-0">
-            <div class="text-[13px] text-[#1C2434] truncate">
-              <span v-if="l.account" class="text-[#9BA7B0] tabular-nums">{{ l.account.code }}</span>
-              <span class="ml-1.5">{{ l.account ? l.account.name : (l.description || '—') }}</span>
-            </div>
-            <div class="text-[13px] text-[#1C2434] tabular-nums text-right">{{ Number(l.debit) ? fmtMoney(l.debit) : '' }}</div>
-            <div class="text-[13px] text-[#1C2434] tabular-nums text-right">{{ Number(l.credit) ? fmtMoney(l.credit) : '' }}</div>
-          </div>
-          <!-- Totals -->
-          <div class="grid grid-cols-[1fr_7rem_7rem] gap-3 px-3 py-2 bg-[#F7F9FC] border-t border-[#E2E8F0]">
-            <div></div>
-            <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ fmtMoney(totalDebit(j)) }}</div>
-            <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ fmtMoney(totalCredit(j)) }}</div>
-          </div>
-        </div>
+        <JournalLinesTable :lines="j.lines" :total-debit="totalDebit(j)" :total-credit="totalCredit(j)" />
       </div>
     </div>
+
+    <!-- Projected preview: saved order, nothing posted to the GL yet -->
+    <div v-else-if="preview" class="px-5 py-4">
+      <div class="flex items-start gap-2 mb-3 px-3 py-2.5 bg-amber-50 border border-amber-200 text-[12px] text-amber-800 leading-snug">
+        <InformationCircleIcon class="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+        <span>{{ t('erp.orders.journalsPreviewHint') }}</span>
+      </div>
+      <div class="border border-dashed border-[#CBD5E1]">
+        <div class="flex items-center justify-between gap-3 px-3 py-2 bg-[#F7F9FC] border-b border-[#E2E8F0]">
+          <span class="inline-flex items-center gap-2 text-[12px] font-semibold text-[#637381]">
+            <span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold uppercase tracking-wide">{{ t('erp.orders.journalsPreviewBadge') }}</span>
+            {{ t('erp.orders.journalsPreviewTitle') }}
+          </span>
+          <span class="text-[12px] text-[#637381] tabular-nums">{{ fmtDate(preview.date) }}</span>
+        </div>
+        <JournalLinesTable :lines="preview.lines" :total-debit="totalDebit(preview)" :total-credit="totalCredit(preview)" framed />
+      </div>
+    </div>
+
+    <!-- Posted, but nothing related to this order -->
+    <EmptyState v-else :icon="BookOpenIcon"
+      :title="t('erp.orders.journalsNone')"
+      :subtitle="t('erp.orders.journalsNoneHint')" />
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
-import { BookOpenIcon } from '@heroicons/vue/24/outline'
+import { BookOpenIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import EmptyState from '@/components/form/EmptyState.vue'
 import ErrorBanner from '@/components/form/ErrorBanner.vue'
 import api from '@/api'
@@ -80,7 +75,7 @@ import { parseApiError } from '@/utils/apiError'
 const { t } = useI18n()
 
 const props = defineProps({
-  // Null/empty on the create page (no order saved yet).
+  // Null/empty on the create page until the first draft is saved.
   orderId: { type: String, default: '' },
   // Parent flips this true when the Journals tab is first shown so we only
   // fetch once it's actually needed.
@@ -88,9 +83,9 @@ const props = defineProps({
 })
 
 const journals = ref([])
+const preview  = ref(null)
 const loading  = ref(false)
 const error    = ref('')
-let loadedFor  = ''
 
 async function load() {
   if (!props.orderId) return
@@ -99,7 +94,7 @@ async function load() {
   try {
     const { data } = await api.get(`/erp/sale-orders/${props.orderId}/journals`)
     journals.value = data.data?.journals || []
-    loadedFor = props.orderId
+    preview.value  = data.data?.preview  || null
   } catch (err) {
     error.value = parseApiError(err, 'Failed to load journal entries')
   } finally {
@@ -107,10 +102,11 @@ async function load() {
   }
 }
 
-// Lazy-load: fetch the first time the tab becomes active for a given order.
+// Lazy-load whenever the tab becomes active (and a saved order exists), so the
+// preview reflects the latest saved totals — e.g. after re-saving a draft.
 watch(
   () => [props.active, props.orderId],
-  () => { if (props.active && props.orderId && loadedFor !== props.orderId) load() },
+  () => { if (props.active && props.orderId) load() },
   { immediate: true },
 )
 
@@ -123,5 +119,37 @@ function statusBadge(status) {
     draft:  'bg-amber-50 text-amber-700',
     voided: 'bg-[#F1F5F9] text-[#9BA7B0] line-through',
   }[status] || 'bg-[#F1F5F9] text-[#637381]'
+}
+
+// Small functional component for the debit/credit lines table, shared by the
+// posted entries and the preview. `framed` drops the outer border so it can
+// sit inside the dashed preview frame.
+const cell = 'grid grid-cols-[1fr_7rem_7rem] gap-3 px-3 py-2'
+const head = (text, right = false) =>
+  h('div', { class: `text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider${right ? ' text-right' : ''}` }, text)
+const JournalLinesTable = (p) => {
+  const rows = (p.lines || []).map((l, i) =>
+    h('div', { key: i, class: `${cell} border-b border-[#E2E8F0] last:border-b-0` }, [
+      h('div', { class: 'text-[13px] text-[#1C2434] truncate' }, [
+        l.account?.code ? h('span', { class: 'text-[#9BA7B0] tabular-nums' }, l.account.code) : null,
+        h('span', { class: l.account?.code ? 'ml-1.5' : '' }, l.account ? l.account.name : (l.description || '—')),
+      ]),
+      h('div', { class: 'text-[13px] text-[#1C2434] tabular-nums text-right' }, Number(l.debit)  ? fmtMoney(l.debit)  : ''),
+      h('div', { class: 'text-[13px] text-[#1C2434] tabular-nums text-right' }, Number(l.credit) ? fmtMoney(l.credit) : ''),
+    ]),
+  )
+  return h('div', { class: p.framed ? '' : 'border border-[#E2E8F0]' }, [
+    h('div', { class: `${cell} bg-[#F7F9FC] border-b border-[#E2E8F0]` }, [
+      head(t('erp.orders.journalAccount')),
+      head(t('erp.orders.journalDebit'), true),
+      head(t('erp.orders.journalCredit'), true),
+    ]),
+    ...rows,
+    h('div', { class: `${cell} bg-[#F7F9FC] border-t border-[#E2E8F0]` }, [
+      h('div'),
+      h('div', { class: 'text-[13px] font-bold text-[#1C2434] tabular-nums text-right' }, fmtMoney(p.totalDebit)),
+      h('div', { class: 'text-[13px] font-bold text-[#1C2434] tabular-nums text-right' }, fmtMoney(p.totalCredit)),
+    ]),
+  ])
 }
 </script>
