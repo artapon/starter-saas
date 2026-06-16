@@ -64,6 +64,7 @@ export default {
       discard:      'ยกเลิก',
       readOnlyNotice: 'อ่านอย่างเดียว — แก้ไขได้เฉพาะใบสั่งที่เป็นร่าง',
       backToList:     'กลับไปที่รายการ',
+      saveBeforeAction: 'บันทึกการเปลี่ยนแปลงก่อน',
       updateStatus: 'อัปเดตสถานะ',
       deleteOrder:  'ลบใบสั่ง',
       colCode:      'รหัส',

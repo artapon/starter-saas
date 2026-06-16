@@ -64,6 +64,7 @@ export default {
       discard:      'Discard',
       readOnlyNotice: 'Read-only — only draft orders can be edited',
       backToList:     'Back to list',
+      saveBeforeAction: 'Save your changes first',
       updateStatus: 'Update Order Status',
       deleteOrder:  'Delete Order',
       colCode:      'Code',

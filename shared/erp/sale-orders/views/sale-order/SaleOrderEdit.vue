@@ -16,6 +16,44 @@
         </template>
         <template #actions>
           <KeyboardShortcuts :shortcuts="shortcuts" width="w-64" />
+
+          <!-- Workflow next-actions (moved here from the detail page): advance the
+               status, cancel, or generate a delivery order. Drafts must be saved
+               first, so transitions are disabled while there are unsaved edits. -->
+          <template v-if="!loading && order">
+            <button v-for="s in forwardTransitions" :key="s"
+              @click="changeStatus(s)" :disabled="updatingStatus || dirty"
+              :title="dirty ? t('erp.orders.saveBeforeAction') : ''"
+              class="inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold
+                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="forwardBtnClass(s)">
+              <ArrowPathIcon v-if="updatingStatus" class="w-3.5 h-3.5 animate-spin" />
+              <template v-else>{{ transitionLabel(s) }}</template>
+            </button>
+
+            <button v-if="['confirmed', 'shipped', 'delivered'].includes(order.status)"
+              v-can="'erp.orders.edit'" @click="convertToDeliveryOrder"
+              :disabled="!!converting || !!order.linkedDeliveryOrder"
+              :title="order.linkedDeliveryOrder ? `Already linked to ${order.linkedDeliveryOrder.refNo}` : ''"
+              class="inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold
+                     text-primary-600 bg-primary-50 border border-primary-200 hover:bg-primary-100
+                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <TruckIcon class="w-4 h-4" />
+              {{ converting === 'do' ? t('erp.common.saving') : t('erp.orders.createDeliveryOrder') }}
+            </button>
+            <RouterLink v-if="order.linkedDeliveryOrder" :to="`/erp/delivery-orders/${order.linkedDeliveryOrder.id}`"
+              class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
+              → {{ order.linkedDeliveryOrder.refNo }}
+            </RouterLink>
+
+            <button v-for="s in cancelTransitions" :key="s"
+              @click="changeStatus(s)" :disabled="updatingStatus"
+              class="inline-flex items-center px-3 py-2.5 text-[12px] font-semibold border border-red-200
+                     text-red-600 bg-white hover:bg-red-50 transition-colors disabled:opacity-50">
+              {{ t('erp.orders.cancelOrder') }}
+            </button>
+          </template>
+
           <RouterLink v-if="!loading && order" :to="`/erp/sale-orders/${route.params.id}`"
             :title="t('erp.orders.previewPrint')"
             class="inline-flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-semibold
@@ -36,6 +74,8 @@
           />
         </template>
       </PageHeader>
+
+      <ErrorBanner v-if="statusError || convertError" :message="statusError || convertError" />
 
       <LoadingSpinner v-if="loading" />
 
@@ -624,7 +664,7 @@ import {
   ArrowPathIcon, UserIcon, ClipboardDocumentListIcon,
   CalculatorIcon, ExclamationTriangleIcon,
   Bars3Icon, CubeIcon, ChevronDownIcon, ChevronRightIcon,
-  MapPinIcon, BookmarkSquareIcon, BookOpenIcon, PrinterIcon, LockClosedIcon,
+  MapPinIcon, BookmarkSquareIcon, BookOpenIcon, PrinterIcon, LockClosedIcon, TruckIcon,
 } from '@heroicons/vue/24/outline'
 import AppLayout from '@/layouts/AppLayout.vue'
 import CurrencySelector from '@/components/CurrencySelector.vue'
@@ -661,6 +701,58 @@ const order        = ref(null)
 // view: every control is disabled and the save actions are hidden.
 const readonly = computed(() => !!order.value && order.value.status !== 'draft')
 const STATUS_VARIANT = { draft: 'draft', confirmed: 'info', shipped: 'draft', delivered: 'success', cancelled: 'danger' }
+
+// ── Workflow next-actions (status transitions + convert), moved here from the
+// detail page so they live on the page that list rows actually open. ────────
+const updatingStatus = ref(false)
+const statusError    = ref('')
+const converting     = ref('')
+const convertError   = ref('')
+
+const TRANSITIONS = {
+  draft:     ['confirmed', 'cancelled'],
+  confirmed: ['shipped', 'cancelled'],
+  shipped:   ['delivered', 'cancelled'],
+  delivered: [],
+  cancelled: [],
+}
+const availableTransitions = computed(() => TRANSITIONS[order.value?.status] || [])
+const forwardTransitions   = computed(() => availableTransitions.value.filter(s => s !== 'cancelled'))
+const cancelTransitions    = computed(() => availableTransitions.value.filter(s => s === 'cancelled'))
+
+const FORWARD_BTN = {
+  confirmed: 'bg-blue-600 text-white hover:bg-blue-700',
+  shipped:   'bg-amber-500 text-white hover:bg-amber-600',
+  delivered: 'bg-green-600 text-white hover:bg-green-700',
+}
+function forwardBtnClass(s) { return FORWARD_BTN[s] || 'bg-primary-500 text-white hover:bg-primary-600' }
+
+const TRANSITION_LABELS = { confirmed: 'Confirm Order', shipped: 'Mark as Shipped', delivered: 'Mark as Delivered' }
+function transitionLabel(s) { return TRANSITION_LABELS[s] || s }
+
+async function changeStatus(status) {
+  statusError.value    = ''
+  updatingStatus.value = true
+  try {
+    const { data } = await api.patch(`/erp/sale-orders/${order.value.id}/status`, { status })
+    order.value = data.data.order
+  } catch (err) {
+    statusError.value = parseApiError(err, 'Failed to update status')
+  } finally {
+    updatingStatus.value = false
+  }
+}
+
+async function convertToDeliveryOrder() {
+  convertError.value = ''
+  converting.value = 'do'
+  try {
+    const { data } = await api.post(`/erp/sale-orders/${order.value.id}/create-delivery-order`)
+    router.push(`/erp/delivery-orders/${data.data.id}`)
+  } catch (err) {
+    convertError.value = parseApiError(err, 'Failed to create delivery order')
+  } finally { converting.value = '' }
+}
 const customers    = ref([])
 const saleItems    = ref([])
 const salePackages = ref([])

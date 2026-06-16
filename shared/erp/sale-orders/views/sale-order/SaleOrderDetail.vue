@@ -96,71 +96,21 @@
           </div>
         </div>
 
-        <!-- ── Action panels (above the printable document) ─────── -->
+        <!-- Workflow next-actions (status transitions + convert to delivery
+             order) now live on the editor/view page; this page is print-only. -->
 
-        <!-- Status transitions -->
-        <div v-can="'erp.orders.edit'" v-if="forwardTransitions.length || cancelTransitions.length"
-          class="bg-white border border-[#E2E8F0] shadow-card px-5 py-4 print:hidden
-                 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <p class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">
-              {{ t('erp.orders.nextAction') }}
-            </p>
-            <p class="text-[13px] text-[#637381] mt-0.5">
-              {{ t('erp.orders.nextActionHint') }}
-            </p>
-          </div>
-          <div class="flex items-center gap-2.5">
-            <button v-for="s in forwardTransitions" :key="s"
-              @click="changeStatus(s)" :disabled="updatingStatus"
-              class="px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50
-                     flex items-center gap-2"
-              :class="forwardBtnClass(s)">
-              <ArrowPathIcon v-if="updatingStatus" class="w-4 h-4 animate-spin" />
-              <template v-else>{{ transitionLabel(s) }}</template>
-            </button>
-            <button v-for="s in cancelTransitions" :key="s"
-              @click="changeStatus(s)" :disabled="updatingStatus"
-              class="px-4 py-2 text-sm font-medium border border-red-200 text-red-600
-                     hover:bg-red-50 transition-colors disabled:opacity-50">
-              {{ t('erp.orders.cancelOrder') }}
-            </button>
-          </div>
-        </div>
         <p v-if="statusError" class="text-xs text-red-600 print:hidden">{{ statusError }}</p>
 
-        <!-- Conversion actions (confirmed / shipped / delivered) -->
-        <div v-if="['confirmed', 'shipped', 'delivered'].includes(order.status)"
-          class="bg-white border border-[#E2E8F0] shadow-card px-5 py-4 print:hidden
-                 flex items-center flex-wrap gap-3">
-          <p class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider mr-2">
-            {{ t('erp.orders.convertActions') }}
-          </p>
-          <button v-can="'erp.orders.edit'" @click="convertToDeliveryOrder"
-            :disabled="converting || !!order.linkedDeliveryOrder"
-            :title="order.linkedDeliveryOrder ? `Already linked to ${order.linkedDeliveryOrder.refNo}` : ''"
-            class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-50 text-primary-600 border border-primary-200
-                   hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            <TruckIcon class="w-4 h-4" />
-            {{ converting === 'do' ? t('erp.common.saving') : t('erp.orders.createDeliveryOrder') }}
-          </button>
-          <RouterLink v-if="order.linkedDeliveryOrder" :to="`/erp/delivery-orders/${order.linkedDeliveryOrder.id}`"
-            class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100">
-            → {{ order.linkedDeliveryOrder.refNo }}
-          </RouterLink>
-
-          <!-- Cash → Receipt, Credit → Invoice happen on the Delivery Order. -->
-          <span class="self-center text-xs text-[#9BA7B0]">
-            {{ order.saleType === 'cash' ? t('erp.orders.cashNextHint') : t('erp.orders.creditNextHint') }}
-          </span>
-
-          <span v-if="convertError" class="self-center text-xs text-red-600">{{ convertError }}</span>
+        <!-- Printable document (left) with the activity timeline alongside it on
+             the right; the timeline stacks below on narrow screens and is hidden
+             on print so the document prints full-width. -->
+        <div class="flex flex-col xl:flex-row gap-5 items-start">
+          <div class="flex-1 min-w-0 w-full">
+            <SaleOrderReport :order="order" />
+          </div>
+          <ActivityTimeline v-if="order" ref-type="Order" :ref-id="order.id"
+            class="print:hidden w-full xl:w-80 xl:flex-shrink-0" />
         </div>
-
-        <!-- Printable document (extracted report view) -->
-        <SaleOrderReport :order="order" />
-
-        <ActivityTimeline v-if="order" ref-type="Order" :ref-id="order.id" class="print:hidden" />
       </template>
     </div>
 
@@ -205,7 +155,7 @@ import DocCurrencyBadge from '@/components/DocCurrencyBadge.vue'
 import {
   ArrowLeftIcon, ChevronRightIcon,
   CheckIcon, XMarkIcon, TrashIcon, PencilSquareIcon,
-  ArrowPathIcon, ExclamationCircleIcon, TruckIcon, PrinterIcon,
+  ExclamationCircleIcon, PrinterIcon,
 } from '@heroicons/vue/24/outline'
 import AppLayout from '@/layouts/AppLayout.vue'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts.vue'
@@ -220,10 +170,7 @@ const router = useRouter()
 const order          = ref(null)
 const loading        = ref(true)
 const notFound       = ref(false)
-const updatingStatus = ref(false)
-const statusError    = ref('')
-const converting     = ref('')
-const convertError   = ref('')
+const statusError    = ref('')   // surfaces delete failures (see confirmDelete)
 
 const { shortcuts } = useDetailShortcuts({
   enabled:   () => !loading.value && !notFound.value && !confirmOpen.value,
@@ -262,18 +209,8 @@ function confirmAnswer(ok) {
 
 function onPrint() { window.print() }
 
-async function convertToDeliveryOrder() {
-  convertError.value = ''
-  converting.value = 'do'
-  try {
-    const { data } = await api.post(`/erp/sale-orders/${order.value.id}/create-delivery-order`)
-    router.push(`/erp/delivery-orders/${data.data.id}`)
-  } catch (err) {
-    convertError.value = err.response?.data?.message || 'Failed to create delivery order'
-  } finally { converting.value = '' }
-}
-
-// ── Workflow ──────────────────────────────────────────────
+// ── Workflow progress strip (status transitions themselves moved to the
+// editor/view page) ───────────────────────────────────────
 const FLOW_STEPS = [
   { key: 'draft',     label: 'Draft' },
   { key: 'confirmed', label: 'Confirmed' },
@@ -289,18 +226,7 @@ const COMPLETED_BEFORE = {
   cancelled: [],
 }
 
-const TRANSITIONS = {
-  draft:     ['confirmed', 'cancelled'],
-  confirmed: ['shipped', 'cancelled'],
-  shipped:   ['delivered', 'cancelled'],
-  delivered: [],
-  cancelled: [],
-}
-
-const availableTransitions = computed(() => TRANSITIONS[order.value?.status] || [])
-const forwardTransitions   = computed(() => availableTransitions.value.filter(s => s !== 'cancelled'))
-const cancelTransitions    = computed(() => availableTransitions.value.filter(s => s === 'cancelled'))
-const isCancelled          = computed(() => order.value?.status === 'cancelled')
+const isCancelled = computed(() => order.value?.status === 'cancelled')
 
 function stepState(key) {
   const cur = order.value?.status
@@ -313,20 +239,6 @@ function stepChipClass(key) {
   if (s === 'current')   return 'bg-primary-50 text-primary-700 ring-1 ring-primary-200'
   return 'bg-[#F7F9FC] text-[#9BA7B0]'
 }
-
-const FORWARD_BTN = {
-  confirmed: 'bg-blue-600 text-white hover:bg-blue-700',
-  shipped:   'bg-amber-500 text-white hover:bg-amber-600',
-  delivered: 'bg-green-600 text-white hover:bg-green-700',
-}
-function forwardBtnClass(s) { return FORWARD_BTN[s] || 'bg-primary-500 text-white hover:bg-primary-600' }
-
-const TRANSITION_LABELS = {
-  confirmed: 'Confirm Order',
-  shipped:   'Mark as Shipped',
-  delivered: 'Mark as Delivered',
-}
-function transitionLabel(s) { return TRANSITION_LABELS[s] || s }
 
 // ── Status badge ──────────────────────────────────────────
 const STATUS_BADGE = {
@@ -358,19 +270,6 @@ async function fetchOrder() {
     notFound.value = true
   } finally {
     loading.value = false
-  }
-}
-
-async function changeStatus(status) {
-  statusError.value    = ''
-  updatingStatus.value = true
-  try {
-    const { data } = await api.patch(`/erp/sale-orders/${order.value.id}/status`, { status })
-    order.value = data.data.order
-  } catch (err) {
-    statusError.value = err.response?.data?.message || 'Failed to update status'
-  } finally {
-    updatingStatus.value = false
   }
 }
 
