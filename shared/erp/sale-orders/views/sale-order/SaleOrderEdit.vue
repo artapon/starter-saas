@@ -205,7 +205,7 @@
             <ReadonlyField v-if="readonly" :label="t('erp.orders.shippingAddress')" :value="form.shippingAddress" />
             <FormField v-else name="shippingAddress" :label="t('erp.orders.shippingAddress')" :errors="errors"
               v-model="form.shippingAddress" textarea :rows="3" placeholder="Ship to address…"
-              input-class="resize-none" />
+              input-class="resize-none" label-class="label-xs" />
 
             <ReadonlyField v-if="readonly" :label="t('erp.orders.billingAddress')" :value="form.billingAddress" />
             <div v-else>

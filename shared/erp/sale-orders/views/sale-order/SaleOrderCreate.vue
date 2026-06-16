@@ -141,7 +141,7 @@
           <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <FormField name="shippingAddress" :label="t('erp.orders.shippingAddress')" :errors="errors"
               v-model="form.shippingAddress" textarea :rows="3" placeholder="Ship to address…"
-              input-class="resize-none" />
+              input-class="resize-none" label-class="label-xs" />
             <div>
               <div class="flex items-center justify-between">
                 <FieldLabel :text="t('erp.orders.billingAddress')" />
