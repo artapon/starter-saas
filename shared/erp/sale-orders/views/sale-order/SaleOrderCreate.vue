@@ -200,13 +200,13 @@
           <div v-else>
             <div class="grid items-center gap-3 px-5 py-2.5 bg-[#F7F9FC] border-b border-[#E2E8F0]"
               style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 2rem 2.25rem">
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-center">#</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.saleItem') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider">{{ t('erp.orders.store') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.items') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.unitPrice') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.lineDiscount') }}</div>
-              <div class="text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">{{ t('erp.orders.amount') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-center">#</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider">{{ t('erp.orders.saleItem') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider">{{ t('erp.orders.store') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.items') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.unitPrice') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.lineDiscount') }}</div>
+              <div class="text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">{{ t('erp.orders.amount') }}</div>
               <div></div>
               <div></div>
             </div>
@@ -355,7 +355,7 @@
             <!-- Subtotal footer -->
             <div class="grid items-center gap-3 px-5 py-3.5 bg-[#F7F9FC] border-t border-[#E2E8F0]"
               style="grid-template-columns: 1.8rem 2.5fr 1.4fr 5.5rem 5.5rem 5.5rem 5.5rem 2rem 2.25rem">
-              <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] uppercase tracking-wider text-right">
+              <div class="col-span-6 text-[11px] font-semibold text-[#9BA7B0] tracking-wider text-right">
                 {{ t('erp.orders.subtotal') }}
               </div>
               <div class="text-[13px] font-bold text-[#1C2434] tabular-nums text-right">{{ fmtMoney(subtotal) }}</div>
