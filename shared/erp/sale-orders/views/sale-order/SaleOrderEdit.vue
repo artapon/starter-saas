@@ -134,7 +134,7 @@
 
             <!-- Reference / PO # -->
             <ReadonlyField v-if="readonly" :label="t('erp.orders.referenceNumber')" :value="form.referenceNumber" />
-            <FormField v-else name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors">
+            <FormField v-else name="referenceNumber" :label="t('erp.orders.referenceNumber')" :errors="errors" label-class="label-xs">
               <template #default="{ id }">
                 <input :id="id" ref="referenceInputRef" v-model="form.referenceNumber" type="text"
                   placeholder="e.g. PO-2025-001" class="input" />
@@ -143,7 +143,7 @@
 
             <!-- Order Date -->
             <ReadonlyField v-if="readonly" :label="t('erp.orders.orderDate')" :value="fmtDate(form.orderDate)" />
-            <FormField v-else name="orderDate" :label="t('erp.orders.orderDate')" :errors="errors" required>
+            <FormField v-else name="orderDate" :label="t('erp.orders.orderDate')" :errors="errors" required label-class="label-xs">
               <template #default="{ hasError }">
                 <DateInput v-model="form.orderDate" :class="['input', hasError && 'input-error']" />
               </template>
@@ -161,7 +161,7 @@
 
             <!-- Payment terms — credit sales only (from master-data) -->
             <ReadonlyField v-if="readonly && form.saleType === 'credit'" :label="t('erp.orders.paymentTerms')" :value="paymentTermsName" />
-            <FormField v-else-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors">
+            <FormField v-else-if="form.saleType === 'credit'" name="paymentTerms" :label="t('erp.orders.paymentTerms')" :errors="errors" label-class="label-xs">
               <template #default="{ id }">
                 <select :id="id" v-model="form.paymentTerms" class="input">
                   <option value="">—</option>

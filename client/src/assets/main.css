@@ -89,6 +89,11 @@
     @apply block text-sm font-medium text-[#1C2434] mb-1.5;
   }
 
+  /* Compact uppercase field label — matches the FieldLabel component. */
+  .label-xs {
+    @apply block text-[11px] font-semibold text-[#637381] uppercase tracking-wider mb-1.5;
+  }
+
   /* ── Cards ────────────────────────────────────────────────────────────────── */
   .card {
     @apply bg-white rounded-2xl border border-[#E2E8F0] shadow-card;
