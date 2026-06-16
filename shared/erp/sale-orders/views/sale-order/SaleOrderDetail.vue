@@ -4,11 +4,11 @@
 
       <!-- Top action bar (hidden on print) -->
       <div class="flex items-start gap-3 print:hidden">
-        <RouterLink to="/erp/sale-orders"
+        <button type="button" @click="goBack"
           class="mt-0.5 p-2 text-[#9BA7B0] hover:text-[#1C2434] hover:bg-white
                  border border-transparent hover:border-[#E2E8F0] transition-all flex-shrink-0">
           <ArrowLeftIcon class="w-[18px] h-[18px]" />
-        </RouterLink>
+        </button>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2.5 flex-wrap">
             <h1 class="text-xl font-bold text-[#1C2434]">
@@ -232,8 +232,15 @@ const { shortcuts } = useDetailShortcuts({
   print:     onPrint,
   remove:    confirmDelete,
   canRemove: () => order.value?.status === 'draft',
-  back:      () => router.push('/erp/sale-orders'),
+  back:      () => goBack(),
 })
+
+// Back arrow + Esc return to wherever the user came from (e.g. the editor via
+// "Preview Print"), falling back to the list when opened directly by URL.
+function goBack() {
+  if (window.history.state?.back) router.back()
+  else router.push('/erp/sale-orders')
+}
 
 // ── Custom confirm modal ────────────────────────────────────────────────
 const confirmOpen    = ref(false)
