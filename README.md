@@ -85,6 +85,57 @@ How the pieces get wired up automatically:
 To add a new ERP module, create a folder under `shared/erp/<feature>/` following the same
 layout — no central registry edits are needed; the route/nav auto-discovery picks it up.
 
+## Sales orders
+
+The `shared/erp/sale-orders` module is the order-to-cash entry point and a worked example
+of a *transactional* document module (as opposed to the master-data modules above). It
+covers the full lifecycle from drafting an order, through committing stock, to handing off
+to delivery and invoicing.
+
+**Document lifecycle.** Every order has a status, and transitions are enforced on both the
+client and — authoritatively — the service layer:
+
+```
+draft → confirmed → shipped → delivered
+   └──────────── cancelled ◄───────────┘   (from any active state)
+```
+
+- **Draft** is the only editable state. The list, create, and edit pages all write to drafts;
+  any other status opens the same editor as a **read-only document view**. The server backs
+  this up: `service.update()` rejects edits to non-draft orders, so the read-only UI can't be
+  bypassed via the API.
+- **Confirming** commits inventory — stock is cut from the selected stores in a single
+  transaction (with a store-lock check so a stock count in progress isn't corrupted), and
+  reversed if the order is later cancelled.
+- A confirmed/shipped/delivered order can spawn a **delivery order**
+  (`POST /:id/create-delivery-order`) or an **invoice** (`POST /:id/create-invoice`); the
+  link to a generated delivery order is shown inline and the action is disabled once used.
+
+**What an order captures.** A `cash` sale type prints as a Receipt and a `credit` sale type
+as an Invoice. Beyond the customer, dates, salesperson, addresses, and reference/PO number,
+each order carries a line-item grid that supports:
+
+- **Item picker or free-text** lines, each with a store, quantity (clamped to available
+  stock), unit price, and a per-line discount (percent or fixed amount).
+- **Sale packages (bundles)** — a package header expands into read-only child lines whose
+  quantities are *per package*; stock moves multiply child qty by the parent's quantity.
+- Order-level **discount**, **VAT**, **withholding tax** (gated by ERP Settings → Tax), and
+  **multi-currency** with an as-of-date exchange rate — all totalled server-side in
+  `computeTotals` rather than trusting the client's numbers.
+
+**Surrounding context.** The customer card surfaces an **AR-aging alert** when the selected
+customer has outstanding receivables (with an overdue-bucket breakdown), and a **Journals**
+tab shows the projected GL posting before confirmation and the actual posted journal entries
+afterwards. Like every ERP route, all endpoints sit behind `authenticate` +
+`requirePermission` (`erp.orders.list` / `.edit` / `.delete`) and are organization-scoped.
+
+| Page | Path |
+|---|---|
+| List | `/erp/sale-orders` |
+| Create | `/erp/sale-orders/create` |
+| Edit (draft) / read-only view (other statuses) | `/erp/sale-orders/:id/edit` |
+| Printable document view | `/erp/sale-orders/:id` |
+
 ## Reporting & printable documents
 
 The `shared/reporting/` module hosts cross-module output that doesn't belong to any single
