@@ -1,4 +1,4 @@
-const {
+﻿const {
   Quotation, QuotationItem,
   Customer, Product, Item, SaleItem, SalePackage, Store, User,
   sequelize,
@@ -288,7 +288,7 @@ const convertToOrder = async (id, userId, organizationId) => {
     for (const child of (childrenByParent.get(parent.id) || [])) ordered.push(child)
   }
 
-  const orderSvc = require('../orders/services/order.service')
+  const orderSvc = require('../sale-orders/services/sale-order.service')
   const orderResult = await orderSvc.create({
     customerId:      q.customerId,
     orderDate:       q.quotationDate,

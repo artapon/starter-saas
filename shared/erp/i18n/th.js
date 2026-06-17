@@ -27,6 +27,7 @@ export default {
       activeTo:      'วันที่สิ้นสุด',
       source:        'ที่มา',
       currency:      'สกุลเงิน',
+      clear:         'ล้าง',
       batchId:       'ล็อต / แบตช์',
       batchPh:       'เลขล็อต',
       expiryDate:    'วันหมดอายุ',

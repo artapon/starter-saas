@@ -223,7 +223,7 @@
         </RouterLink>
 
         <!-- Active Sales Orders -->
-        <RouterLink v-if="canOrders" to="/erp/orders"
+        <RouterLink v-if="canOrders" to="/erp/sale-orders"
           class="bg-white border border-[#E2E8F0] shadow-sm p-5 flex items-start gap-4 hover:border-emerald-200 hover:shadow-md transition-all group">
           <div class="w-11 h-11 bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
             <ShoppingCartIcon class="w-5 h-5 text-emerald-600" />
@@ -698,7 +698,7 @@
             </span>
           </RouterLink>
 
-          <RouterLink v-can="'erp.orders.edit'" to="/erp/orders/create"
+          <RouterLink v-can="'erp.orders.edit'" to="/erp/sale-orders/create"
             class="flex flex-col items-center gap-2.5 p-4 border border-[#E2E8F0]
                    hover:border-emerald-300 hover:bg-emerald-50 transition-all group text-center">
             <div class="w-10 h-10 bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors">

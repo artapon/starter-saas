@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="space-y-5">
 
@@ -265,7 +265,7 @@ const REF_ROUTE = {
   StockReturn:   '/erp/stock-return',
   StockCount:    '/erp/stock-count',
   DeliveryOrder: '/erp/delivery-orders',
-  SalesOrder:    '/erp/orders',
+  SalesOrder:    '/erp/sale-orders',
 }
 const refPath = (m) => (m?.refId && REF_ROUTE[m.refType]) ? `${REF_ROUTE[m.refType]}/${m.refId}` : null
 

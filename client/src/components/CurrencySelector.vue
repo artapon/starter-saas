@@ -7,6 +7,7 @@
         track-by="code"
         label-key="code"
         :allow-empty="false"
+        :disabled="disabled"
         :placeholder="baseCode || '—'"
         @update:model-value="onChange"
       >
@@ -35,6 +36,7 @@ const props = defineProps({
   exchangeRate: { type: [Number, String], default: 1 },
   asOfDate:     { type: String, default: '' },
   showRate:     { type: Boolean, default: true },
+  disabled:     { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'update:exchangeRate'])
 

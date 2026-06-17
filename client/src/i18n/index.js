@@ -40,11 +40,26 @@ function buildMessages() {
 
 const savedLang = localStorage.getItem('app-lang') || 'en'
 
-const i18n = createI18n({
+// vue-i18n snapshots messages at createI18n() time and Vite has no built-in HMR
+// for locale files, so newly added/changed keys in any */i18n/{en,th}.js wouldn't
+// appear in a running dev session (they render as raw key paths) until a full
+// reload. Keep a single i18n instance alive across HMR via hot.data so main.js
+// keeps using the same object, and just re-merge messages into it on update.
+const i18n = import.meta.hot?.data.i18n ?? createI18n({
   legacy: false,
   locale: savedLang,
   fallbackLocale: 'en',
   messages: buildMessages(),
 })
+
+if (import.meta.hot) {
+  import.meta.hot.data.i18n = i18n
+  import.meta.hot.accept(() => {
+    const next = buildMessages()
+    for (const locale of Object.keys(next)) {
+      i18n.global.setLocaleMessage(locale, next[locale])
+    }
+  })
+}
 
 export default i18n

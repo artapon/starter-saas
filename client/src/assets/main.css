@@ -89,6 +89,17 @@
     @apply block text-sm font-medium text-[#1C2434] mb-1.5;
   }
 
+  /* Compact uppercase field label — matches the FieldLabel component. */
+  .label-xs {
+    @apply block text-[11px] font-semibold text-[#637381] uppercase tracking-wider mb-1.5;
+  }
+
+  /* Sale-order create/edit/view: render field labels at text-sm in their
+     natural mixed case (not the compact uppercase treatment). */
+  .so-labels-sm .label-xs {
+    @apply text-sm normal-case tracking-normal;
+  }
+
   /* ── Cards ────────────────────────────────────────────────────────────────── */
   .card {
     @apply bg-white rounded-2xl border border-[#E2E8F0] shadow-card;

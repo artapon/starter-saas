@@ -25,6 +25,10 @@ const DEFAULTS = {
   audit: {
     debug: false,   // when true, the ERP audit middleware also stores the request payload on each log row
   },
+  saleOrders: {
+    defaultSaleType: 'credit',  // 'cash' = SO → DO → Receipt | 'credit' = SO → DO → Invoice
+    defaultStoreId:  '',        // pre-selected store for new product line items ('' = none)
+  },
 }
 
 const get = async (userId) => {
@@ -40,13 +44,14 @@ const get = async (userId) => {
       tax:      { ...DEFAULTS.tax,      ...parsed.tax },
       calendar: { ...DEFAULTS.calendar, ...parsed.calendar },
       audit:    { ...DEFAULTS.audit,    ...parsed.audit },
+      saleOrders: { ...DEFAULTS.saleOrders, ...parsed.saleOrders },
     }
   } catch {
     return structuredClone(DEFAULTS)
   }
 }
 
-const save = async (userId, { general, currency, tax, calendar, audit } = {}) => {
+const save = async (userId, { general, currency, tax, calendar, audit, saleOrders } = {}) => {
   const current = await get(userId)
   const merged = {
     ...current,
@@ -55,6 +60,7 @@ const save = async (userId, { general, currency, tax, calendar, audit } = {}) =>
     ...(tax      && { tax:      { ...current.tax,      ...tax      } }),
     ...(calendar && { calendar: { ...current.calendar, ...calendar } }),
     ...(audit    && { audit:    { ...current.audit,    ...audit    } }),
+    ...(saleOrders && { saleOrders: { ...current.saleOrders, ...saleOrders } }),
   }
   await Setting.upsert({ key: KEY, userId: userId || null, value: JSON.stringify(merged) })
   auditDebugCache.delete(userId || null) // a saved change takes effect immediately
@@ -81,4 +87,18 @@ const isAuditDebug = async (orgId) => {
   return value
 }
 
-module.exports = { get, save, isAuditDebug, DEFAULTS }
+// Resolve the configured default sale type for new sales orders. Other modules
+// (e.g. the sale-order service) call this so the default lives in one place.
+const getDefaultSaleType = async (userId) => {
+  const settings = await get(userId)
+  return settings.saleOrders?.defaultSaleType === 'cash' ? 'cash' : 'credit'
+}
+
+// Resolve the configured tax method (rate + inclusive/exclusive). The sale-order
+// service uses this so VAT is computed the same way the settings page describes.
+const getTaxConfig = async (userId) => {
+  const settings = await get(userId)
+  return { ...DEFAULTS.tax, ...settings.tax }
+}
+
+module.exports = { get, save, isAuditDebug, getDefaultSaleType, getTaxConfig, DEFAULTS }

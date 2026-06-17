@@ -1,9 +1,13 @@
-const { SaleItem, Product, Pricing } = require('../../../../server/models')
+const { SaleItem, Product, Pricing, StoreStock } = require('../../../../server/models')
 const { Op } = require('sequelize')
 const { findByPkScoped } = require('../../../../server/core/tenant')
 
 const includes = [
-  { model: Product, as: 'product', attributes: ['id', 'name', 'sku'] },
+  { model: Product, as: 'product', attributes: ['id', 'name', 'sku', 'stock'], include: [
+    // Per-store on-hand so callers (e.g. the sale-order line picker) can show
+    // available stock and cap order quantities to it.
+    { model: StoreStock, as: 'storeStocks', attributes: ['storeId', 'stock'] },
+  ] },
   { model: Pricing, as: 'pricings', attributes: ['id', 'name', 'unitPrice', 'currency', 'customerGroupId'] },
 ]
 

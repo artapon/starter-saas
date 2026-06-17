@@ -45,7 +45,7 @@ export default {
           ...(m('sale').navChildren        || []),
           ...(m('pricing').navChildren     || []),
           ...(m('quotations').navChildren  || []),
-          ...(m('orders').navChildren      || []),
+          ...(m('sale-orders').navChildren  || []),
         ],
       },
       {

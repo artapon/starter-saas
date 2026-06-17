@@ -1,4 +1,4 @@
-// Unit tests for quotation.service.
+﻿// Unit tests for quotation.service.
 //
 // The transactional create/update bodies are deliberately not unit-tested.
 // What matters here is the unusual transition matrix (back-to-draft is
@@ -22,14 +22,14 @@ jest.mock('../../audit/audit.service', () => ({ log: jest.fn() }))
 jest.mock('../../settings/services/currency.service', () => ({ getRateOn: jest.fn(() => 1) }), { virtual: true })
 jest.mock('../../settings/services/sequence.service', () => ({ getNext: jest.fn(() => 'QT-1') }), { virtual: true })
 
-// orders.service is require()d from convertToOrder; use the resolved path
-// from the caller's perspective (../orders/services/order.service).
-jest.mock('../../orders/services/order.service', () => ({ create: jest.fn() }))
+// sale-order.service is require()d from convertToOrder; use the resolved path
+// from the caller's perspective (../sale-orders/services/sale-order.service).
+jest.mock('../../sale-orders/services/sale-order.service', () => ({ create: jest.fn() }))
 
 const { Op } = require('sequelize')
 const { Quotation } = require('../../../../server/models')
 const audit = require('../../audit/audit.service')
-const orderSvc = require('../../orders/services/order.service')
+const orderSvc = require('../../sale-orders/services/sale-order.service')
 const service = require('../quotation.service')
 
 describe('quotation.list', () => {

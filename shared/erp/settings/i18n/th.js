@@ -18,6 +18,18 @@ export default {
 
       tabDate:            'วันที่และปฏิทิน',
       tabAuditLog:        'บันทึกการตรวจสอบ',
+
+      // ── แท็บใบสั่งขาย ────────────────────────────────────
+      saleOrders:         'ใบสั่งขาย',
+      saleOrdersDesc:     'ค่าเริ่มต้นที่ใช้กับใบสั่งขายใหม่',
+      defaultSaleType:    'ประเภทการขายเริ่มต้น',
+      saleTypeCash:       'เงินสด',
+      saleTypeCredit:     'เครดิต',
+      saleTypeCashDesc:   'ใบสั่งใหม่จะตั้งเป็นขายเงินสด (ใบสั่งขาย → ใบส่งสินค้า → ใบเสร็จ)',
+      saleTypeCreditDesc: 'ใบสั่งใหม่จะตั้งเป็นขายเครดิต (ใบสั่งขาย → ใบส่งสินค้า → ใบแจ้งหนี้)',
+      defaultLineStore:     'คลังเริ่มต้นของรายการสินค้า',
+      defaultLineStoreDesc: 'คลังที่เลือกไว้ล่วงหน้าสำหรับรายการสินค้าใหม่ในใบสั่งขาย',
+
       auditLog:           'บันทึกการตรวจสอบ',
       auditLogDesc:       'ควบคุมวิธีการบันทึกกิจกรรมของ ERP ในบันทึกการตรวจสอบ',
       auditDebug:         'โหมดดีบัก — จัดเก็บข้อมูลที่ส่งมา',
@@ -36,8 +48,8 @@ export default {
       taxDesc:         'กำหนดอัตราภาษีเริ่มต้นและวิธีคำนวณ',
       taxRate:         'อัตราภาษีเริ่มต้น',
       taxMethod:       'วิธีคำนวณภาษี',
-      taxExclusive:    'ภาษีก่อนยอดรวม',
-      taxInclusive:    'ภาษีหลังยอดรวม',
+      taxExclusive:    'ยอดสินค้าแยก Vat',
+      taxInclusive:    'ยอดสินค้ารวม Vat',
       taxExclusiveDesc: 'ภาษีถูกเพิ่มบนยอดก่อนหักส่วนลด (exclusive)',
       taxInclusiveDesc: 'ราคาสินค้ารวมภาษีไว้แล้ว (inclusive)',
       wht:             'ภาษีหัก ณ ที่จ่าย (WHT)',

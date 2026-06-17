@@ -30,7 +30,7 @@
         leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95"
       >
         <div v-if="open"
-          class="fixed left-1/2 top-[12vh] -translate-x-1/2 w-full max-w-[640px] px-4 sm:px-0 z-[9999]"
+          class="fixed left-1/2 top-[12vh] -translate-x-1/2 w-full max-w-[832px] px-4 sm:px-0 z-[9999]"
         >
           <div class="bg-white shadow-2xl border border-[#E2E8F0] flex flex-col max-h-[70vh] overflow-hidden">
             <!-- Header / search -->
@@ -53,6 +53,18 @@
                 @click="close" aria-label="Close">
                 <XMarkIcon class="w-4 h-4" />
               </button>
+            </div>
+
+            <!-- Column header (when meta columns are configured) -->
+            <div v-if="metaColumns.length && flatOptionCount"
+              class="flex items-center gap-3 px-4 py-1.5 bg-white border-b border-[#E2E8F0]
+                     text-[10.5px] font-bold uppercase tracking-wider text-[#9BA7B0] select-none">
+              <span v-if="multiple" class="w-4 flex-shrink-0"></span>
+              <span class="font-mono flex-shrink-0 min-w-[80px]"></span>
+              <span class="flex-1">{{ labelHeader }}</span>
+              <span v-for="col in metaColumns" :key="col.key" class="flex-shrink-0 text-right"
+                :style="{ width: (col.width || 72) + 'px' }">{{ col.header }}</span>
+              <span v-if="!multiple" class="w-4 flex-shrink-0"></span>
             </div>
 
             <!-- Results -->
@@ -88,8 +100,20 @@
                       {{ row.option[codeKey] }}
                     </span>
                     <span class="flex-1 text-[13px] text-[#1C2434] truncate">{{ row.option[labelKey] }}</span>
-                    <CheckIcon v-if="!multiple && isSelectedSingle(row.option)"
-                      class="w-4 h-4 text-primary-600 flex-shrink-0" />
+                    <!-- Single combined meta column (legacy metaKey) -->
+                    <span v-if="metaKey && row.option[metaKey]"
+                      class="text-[12px] text-[#637381] tabular-nums flex-shrink-0 whitespace-nowrap">
+                      {{ row.option[metaKey] }}
+                    </span>
+                    <!-- Separate aligned meta columns -->
+                    <span v-for="col in metaColumns" :key="col.key"
+                      class="text-[12px] text-[#637381] tabular-nums flex-shrink-0 text-right whitespace-nowrap"
+                      :style="{ width: (col.width || 72) + 'px' }">
+                      {{ row.option[col.key] }}
+                    </span>
+                    <span v-if="!multiple" class="w-4 flex-shrink-0 flex items-center justify-center">
+                      <CheckIcon v-if="isSelectedSingle(row.option)" class="w-4 h-4 text-primary-600" />
+                    </span>
                   </button>
                 </template>
               </template>
@@ -154,6 +178,12 @@ const props = defineProps({
   trackBy:           { type: String, default: 'id' },
   labelKey:          { type: String, default: 'name' },
   codeKey:           { type: String, default: 'code' },
+  // Optional right-aligned secondary text per row (e.g. price · stock)
+  metaKey:           { type: String, default: '' },
+  // Optional separate right-aligned columns: [{ key, header, width }]
+  metaColumns:       { type: Array, default: () => [] },
+  // Header label shown above the name column when metaColumns are used
+  labelHeader:       { type: String, default: '' },
   placeholder:       { type: String, default: '' },
   searchPlaceholder: { type: String, default: '' },
   invalid:           { type: Boolean, default: false },

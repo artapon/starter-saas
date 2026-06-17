@@ -69,17 +69,22 @@ const getById = async (id, organizationId) => {
 // Per-line tax + order-level discount, mirrors order.service.computeTotals.
 const computeTotals = (items, { discountType, discountValue, whtRate } = {}) => {
   const lines = items.map((i) => {
-    const qty   = Number(i.quantity)  || 0
-    const price = Number(i.unitPrice) || 0
-    const rate  = Number(i.taxRate)   || 0
-    const lineSubtotal = qty * price
-    const taxAmount    = toFixed(lineSubtotal * (rate / 100), 2)
+    const qty     = Number(i.quantity)      || 0
+    const price   = Number(i.unitPrice)     || 0
+    const rate    = Number(i.taxRate)       || 0
+    const discPct = Number(i.discountValue) || 0
+    const lineGross          = qty * price
+    const lineDiscountAmount = toFixed(lineGross * (discPct / 100), 2)
+    const lineSubtotal       = toFixed(lineGross - Number(lineDiscountAmount), 2)
+    const taxAmount          = toFixed(Number(lineSubtotal) * (rate / 100), 2)
     return {
       ...i,
       taxRate: rate,
+      discountValue:  discPct,
+      discountAmount: lineDiscountAmount,
       taxAmount,
-      total: toFixed(lineSubtotal + taxAmount, 2),
-      lineSubtotal: toFixed(lineSubtotal, 2),
+      total: toFixed(Number(lineSubtotal) + Number(taxAmount), 2),
+      lineSubtotal,
     }
   })
   const subtotal = lines.reduce((s, l) => s + Number(l.lineSubtotal), 0)
@@ -145,11 +150,13 @@ const persistInvoiceItems = async ({ invoiceId, lines, organizationId, t }) => {
         productName:   item.productName   || 'Item',
         itemCode:      itemCode           || null,
         description:   item.description   || null,
-        quantity:      Number(item.quantity)  || 1,
-        unitPrice:     Number(item.unitPrice) || 0,
-        taxRate:       Number(item.taxRate)   || 0,
-        taxAmount:     Number(item.taxAmount) || 0,
-        total:         Number(item.total)     || 0,
+        quantity:       Number(item.quantity)       || 1,
+        unitPrice:      Number(item.unitPrice)      || 0,
+        taxRate:        Number(item.taxRate)        || 0,
+        taxAmount:      Number(item.taxAmount)      || 0,
+        discountValue:  Number(item.discountValue)  || 0,
+        discountAmount: Number(item.discountAmount) || 0,
+        total:          Number(item.total)          || 0,
         organizationId: organizationId || null,
       },
       { transaction: t }

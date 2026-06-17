@@ -26,6 +26,18 @@ export default {
 
       tabDate:            'Date & Calendar',
       tabAuditLog:        'Audit Log',
+
+      // ── Sale Orders tab ──────────────────────────────────
+      saleOrders:         'Sale Orders',
+      saleOrdersDesc:     'Defaults applied to new sales orders',
+      defaultSaleType:    'Default Sale Type',
+      saleTypeCash:       'Cash',
+      saleTypeCredit:     'Credit',
+      saleTypeCashDesc:   'New orders default to cash sale (Sales Order → Delivery Order → Receipt).',
+      saleTypeCreditDesc: 'New orders default to credit sale (Sales Order → Delivery Order → Invoice).',
+      defaultLineStore:     'Default Line Items Store',
+      defaultLineStoreDesc: 'Pre-selected store for new product line items on sales orders.',
+
       auditLog:           'Audit Log',
       auditLogDesc:       'Control how ERP activity is recorded in the audit log',
       auditDebug:         'Debug mode — store request payload',
